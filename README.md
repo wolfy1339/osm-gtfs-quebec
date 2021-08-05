@@ -1,9 +1,9 @@
-# osm-gtfs-laval
+# osm-gtfs-quebec
 
-A series of Python functions to visualize STL GTFS data and to convert to JOSM/OSM format for importing.It's a work in progress.
+A series of Python functions to visualize RTC GTFS data and to convert to JOSM/OSM format for importing.It's a work in progress.
 
 ## Requirements
-- Python requirements should be installed automatically by your IDE or use `pip install -r requirements.txt` to install manually
+- Python requirements should be installed automatically by your IDE or use `pip3 install -r requirements.txt` to install manually
 - You need to have GDAL installed on your system
 
 ## How to run
@@ -12,4 +12,4 @@ A series of Python functions to visualize STL GTFS data and to convert to JOSM/O
 
 
 ## Notes
-At this moment, the script is specifically written having STL data in mind and might not work with data from other operators. It needs to be adapted.
+The script was specifically written having STL data in mind and doesn't work with data from the RTC. am adapting it for use with RTC data.
