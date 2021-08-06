@@ -143,14 +143,12 @@ class GTFSProcessor():
         service_prefix = None
         logger.info('Determining latest service from calendar file')
         dates = set()
-        with open("gtfs_data.json", "w+") as f:
-            json.dump(self.gtfs_data, f, indent=4)
-        for service in self.gtfs_data['calendar_dates']['data']:
+        for service in self.gtfs_data['calendar']['data']:
             dates.add(service['date'])
 
         max_date = max(list(dates))
 
-        for service in self.gtfs_data['calendar_dates']['data']:
+        for service in self.gtfs_data['calendar']['data']:
             if service['date'] == max_date:
                 service_prefix = service['service_id'][0:4]
                 logger.info('Latest service is {}'.format(service_prefix))
@@ -194,14 +192,18 @@ class GTFSProcessor():
                     'bus': 'yes',
                     'highway': 'bus_stop',
                     'name': stop['stop_name'].split('[')[0].strip(),
+                    'description': stop['stop_desc'],
                     'public_transport': 'platform',
-                    'ref': stop['stop_code'],
-                    'weelchair': 'yes' if stop['weelchair_boarding'] == '1' else 'no',
+                    'ref': stop['stop_id'],
+                    'network:wikidata': 'Q3456768',
+                    'network:wikipedia': 'en:Réseau de transport de la Capitale',
+                    'network': 'RTC',
+                    'operator': 'Réseau de transport de la Capitale',
+                    'weelchair': 'yes' if stop['wheelchair_boarding'] == '1' else 'no',
                 },
                 "gtfs_props": {
-                    'stop_id': stop['stop_id'],
-                    'location_type': stop['location_type'],
-                    'stop_display': stop['stop_display'],
+                    'stop_id': stop['stop_name'],
+                    'location_type': stop['location_type']
                 },
                 "geom": point,
             }
@@ -223,11 +225,10 @@ class GTFSProcessor():
 
         # Get existing stops
         logger.info('Getting existing stops...')
-        stops_result_laval = api.query(bus_stop_tmpl.format(region_ids['Laval']))
+        stops_result_quebec = api.query(bus_stop_tmpl.format(region_ids['Quebec'] + relation_to_area_factor))
         time.sleep(30)
-        stops_result_montreal = api.query(bus_stop_tmpl.format(region_ids['Montreal']))
 
-        for node in tqdm(stops_result_laval.nodes + stops_result_montreal.nodes):
+        for node in tqdm(stops_result_quebec.nodes):
             geom = ogr.Geometry(ogr.wkbPoint)
             geom.AddPoint(float(node.lon), float(node.lat))
 
@@ -244,12 +245,12 @@ class GTFSProcessor():
 
         # Get existing routes
         logger.info('Getting existing route relations...')
-        routes_result_laval = api.query(service_route_tmpl.format(region_ids['Quebec']))
-        route_masters_result_laval = api.query(master_route_tmpl.format(region_ids['Quebec']))
+        routes_result_quebec = api.query(service_route_tmpl.format(region_ids['Quebec'] + relation_to_area_factor))
+        route_masters_result_quebec = api.query(master_route_tmpl.format(region_ids['Quebec'] + relation_to_area_factor))
 
         values = ['RTC', 'Réseau de transport de la Capitale']
 
-        for relation in routes_result_laval.relations:
+        for relation in routes_result_quebec.relations:
             tags = relation.tags
             true_count = 0
 
@@ -294,7 +295,7 @@ class GTFSProcessor():
 
                 existing_routes.append(existing_route)
 
-        for relation in route_masters_result_laval.relations:
+        for relation in route_masters_result_quebec.relations:
             tags = relation.tags
             true_count = 0
 
@@ -323,9 +324,9 @@ class GTFSProcessor():
 
                 existing_route_masters.append(existing_master_route)
 
-        logger.info('Found {} existing stops in Laval and Montreal'.format(len(existing_stops)))
-        logger.info('Found {} existing routes in Laval'.format(len(existing_routes)))
-        logger.info('Found {} existing master routes in Laval'.format(len(existing_route_masters)))
+        logger.info('Found {} existing stops in Quebec'.format(len(existing_stops)))
+        logger.info('Found {} existing routes in Quebec'.format(len(existing_routes)))
+        logger.info('Found {} existing master routes in Quebec'.format(len(existing_route_masters)))
 
         # Write existing stops to geojson
         logger.info('Writing existing stops to GeoJSON for visualization')
@@ -359,6 +360,8 @@ class GTFSProcessor():
         rows = []
         for existing_route in existing_routes:
             osm_id = existing_route['props']['id']
+            if not existing_route['tags'].get('ref'):
+                print(osm_id)
             ref = existing_route['tags']['ref']
             name = int(ref[:-1]) if complete(ref) else -99999
             rows.append([osm_id, name, ref])
@@ -406,11 +409,11 @@ class GTFSProcessor():
         GTFSProcessor.write_geometry_to_geojson(coverage_gtfs, coverage_path_gtfs)
         GTFSProcessor.write_geometry_to_geojson(coverage_osm, coverage_path_osm)
 
-        logger.info('Filtering coverages for Laval')
-        coverage_osm_laval = []
+        logger.info('Filtering coverages for Quebec')
+        coverage_osm_quebec = []
         for osm_buffer in coverage_osm:
-            if osm_buffer.Intersects(self.boundaries['Laval']):
-                coverage_osm_laval.append(osm_buffer)
+            if osm_buffer.Intersects(self.boundaries['Quebec']):
+                coverage_osm_quebec.append(osm_buffer)
 
         logger.info('Merging stops by proximity')
         for gtfs_buffer in tqdm(coverage_gtfs):
@@ -431,7 +434,7 @@ class GTFSProcessor():
                 potential_stop['tags']['ref'] = codes_joined
                 potential_stop['gtfs_props']['stop_id'] = ids
 
-            for osm_buffer in coverage_osm_laval:
+            for osm_buffer in coverage_osm_quebec:
 
                 if osm_buffer.Intersects(gtfs_buffer):
 
@@ -535,8 +538,9 @@ class GTFSProcessor():
             for route in route_master:
                 osm_id_route -= 1
 
-                route_ref = route['route_url'].split('route_id=')[1].strip()
-                route_name = route['route_long_name']
+                route_ref = route['route_id']
+                route_name = route['route_desc']
+                route_color = route['route_color']
 
                 member_nodes = []
                 # member_ways = []
@@ -582,6 +586,7 @@ class GTFSProcessor():
                         "from": first_stop_name,
                         "to": last_stop_name,
                         "roundtrip": round_trip,
+                        "colour": route_color,
                         "public_transport:version": 2
                     },
                     "members": {
@@ -609,15 +614,12 @@ class GTFSProcessor():
 
             osm_id_route_master -= 1
 
-            directions = [x['route_long_name'].split('Direction')[1].strip() for x in route_master]
-            name = " - ".join(directions)
-
             route_master_relation = {
                 "props": {
                     "id": osm_id_route_master
                 },
                 "tags": {
-                    "name": name,
+                    "name": route['route_long_name'],
                     "ref": key,
                     "network": "RTC",
                     "operator": "Réseau de transport de la Capitale",
@@ -669,9 +671,9 @@ class GTFSProcessor():
                     break
 
     def write_to_xml(self, types: list):
-        print(types)
+        #print(types)
         logger.info('Writing JOSM XML files for {}.'.format(', '.join(types)))
-        output_file = os.path.join(self.output_dir, 'gtfs_laval.xml')
+        output_file = os.path.join(self.output_dir, 'gtfs_quebec.xml')
 
         if os.path.exists(output_file):
             os.remove(output_file)
@@ -919,8 +921,8 @@ output_dir = os.path.join(cwd, 'output')
 
 time1 = time.time()
 gtfs_processor = GTFSProcessor(gtfs_zipfile, boundaries_dir, output_dir)
-gtfs_processor.get_latest_service_id()
-gtfs_processor.filter_gtfs_data()
+#gtfs_processor.get_latest_service_id()
+#gtfs_processor.filter_gtfs_data()
 gtfs_processor.convert_gtfs_stops_to_osm()
 gtfs_processor.get_existing_osm_data()
 gtfs_processor.write_route_ids_csv()
