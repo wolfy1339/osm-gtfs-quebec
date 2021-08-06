@@ -244,10 +244,10 @@ class GTFSProcessor():
 
         # Get existing routes
         logger.info('Getting existing route relations...')
-        routes_result_laval = api.query(service_route_tmpl.format(region_ids['Laval']))
-        route_masters_result_laval = api.query(master_route_tmpl.format(region_ids['Laval']))
+        routes_result_laval = api.query(service_route_tmpl.format(region_ids['Quebec']))
+        route_masters_result_laval = api.query(master_route_tmpl.format(region_ids['Quebec']))
 
-        values = ['STL', 'Société de transport de Laval']
+        values = ['RTC', 'Réseau de transport de la Capitale']
 
         for relation in routes_result_laval.relations:
             tags = relation.tags
@@ -479,8 +479,8 @@ class GTFSProcessor():
             tags: {
                 name: Henri-Bourassa - Metro Montmorency
                 ref: route_short_name
-                network: STL
-                operator: STL
+                network: RTC
+                operator: Réseau de transport de la Capitale
                 type: route_master
                 route_master: bus
                 public_transport:version: 2
@@ -499,8 +499,8 @@ class GTFSProcessor():
                 ref: 2E
                 type: route
                 route: bus
-                network: STL
-                operator: STL
+                network: RTC
+                operator: Réseau de transport de la Capitale
                 from: name of first stop
                 to: name of last stop
                 roundtrip: yes or no
@@ -577,8 +577,8 @@ class GTFSProcessor():
                         "ref": route_ref,
                         "type": "route",
                         "route": "bus",
-                        "network": "STL",
-                        "operator": "STL",
+                        "network": "RTC",
+                        "operator": "Réseau de transport de la Capitale",
                         "from": first_stop_name,
                         "to": last_stop_name,
                         "roundtrip": round_trip,
@@ -619,8 +619,8 @@ class GTFSProcessor():
                 "tags": {
                     "name": name,
                     "ref": key,
-                    "network": "STL",
-                    "operator": "STL",
+                    "network": "RTC",
+                    "operator": "Réseau de transport de la Capitale",
                     "type": "route_master",
                     "route_master": "bus",
                     "public_transport:version": 2
