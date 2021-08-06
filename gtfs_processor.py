@@ -116,15 +116,26 @@ class GTFSProcessor():
                 "path": path,
             }
 
-            with open(path, encoding='utf-8') as csvfile:
-                reader = csv.reader(csvfile)
+            try:
+                with open(path, encoding='utf-8') as csvfile:
+                    reader = csv.reader(csvfile)
 
-                field_names = next(reader)
-                self.gtfs_data[table_name]["field_names"] = field_names
+                    field_names = next(reader)
+                    self.gtfs_data[table_name]["field_names"] = field_names
 
-                dict_reader = csv.DictReader(csvfile, fieldnames=field_names)
-                data = [row for row in dict_reader]
-                self.gtfs_data[table_name]["data"] = data
+                    dict_reader = csv.DictReader(csvfile, fieldnames=field_names)
+                    data = [row for row in dict_reader]
+                    self.gtfs_data[table_name]["data"] = data
+            except UnicodeDecodeError:
+                with open(path, encoding='cp1252') as csvfile:
+                    reader = csv.reader(csvfile)
+
+                    field_names = next(reader)
+                    self.gtfs_data[table_name]["field_names"] = field_names
+
+                    dict_reader = csv.DictReader(csvfile, fieldnames=field_names)
+                    data = [row for row in dict_reader]
+                    self.gtfs_data[table_name]["data"] = data
 
         # Load boundaries into memory
         logger.info('Loading boundary data into memory')
@@ -158,17 +169,21 @@ class GTFSProcessor():
 
     def filter_gtfs_data(self):
         logger.info('Filtering the GTFS data...')
-        prefix = self.service_prefix
+        # prefix = self.service_prefix
 
-        filtered_stops = [x for x in self.gtfs_data['stops']['data'] if x['stop_id'].startswith(prefix)]
-        filtered_routes = [x for x in self.gtfs_data['routes']['data'] if x['route_id'].startswith(prefix)]
-        filtered_trips = [x for x in self.gtfs_data['trips']['data'] if x['trip_id'].startswith(prefix)]
-        filtered_stop_times = [x for x in self.gtfs_data['stop_times']['data'] if x['trip_id'].startswith(prefix)]
+        # filtered_stops = [x for x in self.gtfs_data['stops']['data'] if x['stop_id'].startswith(prefix)]
+        # filtered_routes = [x for x in self.gtfs_data['routes']['data'] if x['route_id'].startswith(prefix)]
+        # filtered_trips = [x for x in self.gtfs_data['trips']['data'] if x['trip_id'].startswith(prefix)]
+        # filtered_stop_times = [x for x in self.gtfs_data['stop_times']['data'] if x['trip_id'].startswith(prefix)]
 
-        self.gtfs_data['stops']['data'] = filtered_stops
-        self.gtfs_data['routes']['data'] = filtered_routes
-        self.gtfs_data['trips']['data'] = filtered_trips
-        self.gtfs_data['stop_times']['data'] = filtered_stop_times
+        # self.gtfs_data['stops']['data'] = filtered_stops
+        # self.gtfs_data['routes']['data'] = filtered_routes
+        # self.gtfs_data['trips']['data'] = filtered_trips
+        # self.gtfs_data['stop_times']['data'] = filtered_stop_times
+
+        # Filter routes that are not in the trips table
+        trips = set([x['route_id'] for x in self.gtfs_data['trips']['data']])
+        self.gtfs_data['routes']['data'] = [x for x in self.gtfs_data['routes']['data'] if x['route_id'] in trips]
 
     def convert_gtfs_stops_to_osm(self):
         osm_id = -100000
@@ -538,14 +553,14 @@ class GTFSProcessor():
             for route in route_master:
                 osm_id_route -= 1
 
-                route_ref = route['route_id']
+                route_ref = key
                 route_name = route['route_desc']
                 route_color = route['route_color']
 
                 member_nodes = []
                 # member_ways = []
 
-                # logger.info('... Finding longest trip and stops for {}'.format(route_ref))
+                logger.info('... Finding longest trip and stops for {}'.format(route_ref))
                 first_stop_name, last_stop_name, stop_ids, trip_id = self.get_route_stops(route['route_id'])
 
                 # Build the shape to write to geojson
@@ -605,7 +620,7 @@ class GTFSProcessor():
                 member_routes.append(member_route)
 
             # Create route master relation
-            # logger.info('Creating route master relation for {}'.format(key))
+            logger.info('Creating route master relation for {}'.format(key))
 
             # Only create route_master_relation if there are more than 1 directions
             if round_trip == "yes":
@@ -778,7 +793,7 @@ class GTFSProcessor():
                 trips[trip_id]['stop_count'] = len(stops)
 
         trips = dict(trips)
-        # logger.info('... ... Found {} trips for route id {}'.format(len(trips.keys()), route_id))
+        logger.info('... ... Found {} trips for route id {}'.format(len(trips.keys()), route_id))
 
         # # Find the longest trip and sort the stops
         longest_trip_id = max(trips, key=lambda v: trips[v]['stop_count'])
@@ -922,7 +937,7 @@ output_dir = os.path.join(cwd, 'output')
 time1 = time.time()
 gtfs_processor = GTFSProcessor(gtfs_zipfile, boundaries_dir, output_dir)
 #gtfs_processor.get_latest_service_id()
-#gtfs_processor.filter_gtfs_data()
+gtfs_processor.filter_gtfs_data()
 gtfs_processor.convert_gtfs_stops_to_osm()
 gtfs_processor.get_existing_osm_data()
 gtfs_processor.write_route_ids_csv()
