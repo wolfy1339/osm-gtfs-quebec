@@ -585,7 +585,7 @@ class GTFSProcessor():
                         "props": {
                             "type": 'node',
                             "ref": stop[0],
-                            "role": 'platform' if stop[1] == '0' else 'stop_exit_only'
+                            "role": 'platform' if (stop[1] == '0' and stop[2] == '0') else 'platform_exit_only' if stop[1] == '2' else 'platform_entry_only'
                         }
                     }
                     # if i == 0:
@@ -793,6 +793,7 @@ class GTFSProcessor():
                             "stop_id": stop_time["stop_id"],
                             "stop_sequence": int(stop_time["stop_sequence"]),
                             "pickup_type": stop_time["pickup_type"],
+                            "drop_off_type": stop_time["drop_off_type"],
                         }
 
                         stops.append(stop)
@@ -816,11 +817,11 @@ class GTFSProcessor():
         # Map to final stop ids
         first_stop_name = None
         last_stop_name = None
-        stops: list[tuple[str, str]] = []
+        stops: list[tuple[str, str, str]] = []
         for i, stop in enumerate(stops_sorted):
             for final_stop in self.final_stops:
                 if stop['stop_id'] in final_stop['gtfs_props']['stop_id']:
-                    stops.append((final_stop['props']['id'],stop['pickup_type']))
+                    stops.append((final_stop['props']['id'],stop['pickup_type'],stop['dropoff_type']))
                     if i == 0:
                         first_stop_name = final_stop['tags']['name']
                     if i == len(stops) - 1:
