@@ -2,7 +2,8 @@
 
 A series of Python functions to visualize RTC GTFS data and to convert to JOSM/OSM format for importing. It's a work in progress.
 
-**There currently is no permission from the RTC to use it's data, DO NOT UPLOAD TO OSM**
+
+# **There currently is no permission from the RTC to use it's data, _this is for personal uses only_, <u>DO NOT UPLOAD TO OSM</u>**
 
 ## Requirements
 - Python requirements should be installed automatically by your IDE or use `pip3 install -r requirements.txt` to install manually
