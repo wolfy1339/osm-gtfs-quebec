@@ -227,7 +227,7 @@ class GTFSProcessor():
                     'name': stop['stop_name'].split('[')[0].strip(),
                     'description': stop['stop_desc'],
                     'public_transport': 'platform',
-                    'ref': stop['stop_id'],
+                    'ref': stop['stop_code'],
                     'network:wikidata': 'Q3456768',
                     'network:wikipedia': 'en:Réseau de transport de la Capitale',
                     'network': 'RTC',
