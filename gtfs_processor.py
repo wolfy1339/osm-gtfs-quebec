@@ -222,6 +222,7 @@ class GTFSProcessor():
                     'name': stop['stop_name'].split('[')[0].strip(),
                     'description': stop['stop_desc'],
                     'public_transport': 'platform',
+                    'local_ref': stop['stop_name'].split("Quai")[1].strip() if "Quai" in stop['stop_name'] else None,
                     'ref': stop['stop_code'],
                     'network:wikidata': 'Q3456768',
                     'network': 'RTC',
