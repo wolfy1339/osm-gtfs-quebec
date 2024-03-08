@@ -219,7 +219,7 @@ class GTFSProcessor():
                 'tags': {
                     'bus': 'yes',
                     'highway': 'bus_stop',
-                    'name': stop['stop_name'].split('[')[0].strip(),
+                    'name': stop['stop_name'],
                     'description': stop['stop_desc'],
                     'public_transport': 'platform',
                     'local_ref': stop['stop_name'].split("Quai")[1].strip() if "Quai" in stop['stop_name'] else None,
