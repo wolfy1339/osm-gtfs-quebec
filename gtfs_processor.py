@@ -622,7 +622,6 @@ class GTFSProcessor():
                     "id": osm_id_route_master
                 },
                 "tags": {
-                    "name": f"Autobus {key}",
                     "name": f"Autobus {route["route_short_name"]}",
                     "ref": key,
                     "network": "RTC",
