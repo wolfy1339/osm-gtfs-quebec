@@ -230,7 +230,6 @@ class GTFSProcessor():
                     'wheelchair': 'yes' if stop['wheelchair_boarding'] == '1' else 'no',
                 },
                 "gtfs_props": {
-                    'location_type': stop['location_type']
                     'gtfs:stop_id': stop['stop_id'],
                 },
                 "geom": point,
