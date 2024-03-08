@@ -332,18 +332,18 @@ class GTFSProcessor():
 
                 existing_route_masters.append(existing_master_route)
 
-        logger.info('Found {} existing stops in Quebec'.format(len(existing_stops)))
-        logger.info('Found {} existing routes in Quebec'.format(len(existing_routes)))
-        logger.info('Found {} existing master routes in Quebec'.format(len(existing_route_masters)))
+        logger.info(f'Found {len(existing_stops)} existing stops in Quebec')
+        logger.info(f'Found {len(existing_routes)} existing routes in Quebec')
+        logger.info(f'Found {len(existing_route_masters)} existing master routes in Quebec')
 
         # Write existing stops to geojson
         logger.info('Writing existing stops to GeoJSON for visualization')
         out_path = os.path.join(output_dir, 'existing_stops.geojson')
         GTFSProcessor.write_data_to_geojson(existing_stops, out_path, "geom", ["props", "tags"])
 
-        logger.info('... {} existings OSM stops found'.format(len(existing_stops)))
-        logger.info('... {} existings OSM routes found'.format(len(existing_routes)))
-        logger.info('... {} existings OSM route masters found'.format(len(existing_route_masters)))
+        logger.info(f'... {len(existing_stops)} existings OSM stops found')
+        logger.info(f'... {len(existing_routes)} existings OSM routes found')
+        logger.info(f'... {len(existing_route_masters)} existings OSM route masters found')
 
         self.existing_data.update({
             "stops": existing_stops,
@@ -528,7 +528,7 @@ class GTFSProcessor():
             route_masters[gtfs_route['route_short_name']].append(gtfs_route)
 
         for key, route_master in tqdm(route_masters.items()):
-            logger.info('Creating route relations for {}'.format(key))
+            logger.info(f'Creating route relations for {key}')
             round_trip = "yes" if len(route_master) == 1 else "no"
 
             member_routes = []
