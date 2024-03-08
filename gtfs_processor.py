@@ -142,7 +142,7 @@ class GTFSProcessor():
                     self.gtfs_data[table_name]["field_names"] = field_names
 
                     dict_reader = csv.DictReader(csvfile, fieldnames=field_names)
-                    data = [row for row in dict_reader]
+                    data = [{k.strip(): v.strip() for k, v in row.items()} for row in dict_reader]
                     self.gtfs_data[table_name]["data"] = data
             except UnicodeDecodeError:
                 with open(path, encoding='cp1252') as csvfile:
@@ -152,7 +152,7 @@ class GTFSProcessor():
                     self.gtfs_data[table_name]["field_names"] = field_names
 
                     dict_reader = csv.DictReader(csvfile, fieldnames=field_names)
-                    data = [row for row in dict_reader]
+                    data = [{k.strip(): v.strip() for k, v in row.items()} for row in dict_reader]
                     self.gtfs_data[table_name]["data"] = data
 
         # Load boundaries into memory
