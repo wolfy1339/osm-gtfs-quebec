@@ -1,3 +1,4 @@
+from io import TextIOWrapper
 import os, sys, shutil
 import csv
 from typing import Any, Literal, TypedDict
@@ -133,7 +134,7 @@ class GTFSProcessor():
                 "path": path,
             }
             
-            def process_csv(csvfile):
+            def process_csv(csvfile: TextIOWrapper):
                 reader = csv.reader(csvfile)
 
                 field_names = next(reader)
