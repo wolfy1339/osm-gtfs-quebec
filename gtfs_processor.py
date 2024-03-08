@@ -451,7 +451,7 @@ class GTFSProcessor():
 
                 potential_stop = intersections[0].copy()
                 potential_stop['tags']['ref'] = codes_joined
-                potential_stop['gtfs_props']['gtfs:stop_id'] = ids
+                potential_stop['gtfs_props']['gtfs:stop_id'] = ";".join(ids)
 
             for osm_buffer in coverage_osm_quebec:
 
