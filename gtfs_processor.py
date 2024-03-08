@@ -185,7 +185,7 @@ class GTFSProcessor():
 
     def convert_gtfs_stops_to_osm(self):
         osm_id = -100000
-        gtfs_stops = []
+        self.gtfs_stops: list[GTFSStop] = []
 
         logger.info('Converting GTFS stops to OSM format')
 
@@ -221,13 +221,11 @@ class GTFSProcessor():
             if ("Quai" in stop['stop_desc']):
                 gtfs_stop['tags']['local_ref'] = stop['stop_desc'].split("Quai")[1].strip()
 
-            gtfs_stops.append(gtfs_stop)
+            self.gtfs_stops.append(gtfs_stop)
 
         logger.info('Writing converted stops to GeoJSON for visualization')
         out_path = os.path.join(output_dir, 'gtfs_stops.geojson')
-        GTFSProcessor.write_data_to_geojson(gtfs_stops, out_path, "geom", ["props", "tags", "gtfs_props"])
-
-        self.gtfs_stops = gtfs_stops
+        GTFSProcessor.write_data_to_geojson(self.gtfs_stops, out_path, "geom", ["props", "tags", "gtfs_props"])
 
     def get_existing_osm_data(self):
         self.existing_data = {}
@@ -889,7 +887,7 @@ class GTFSProcessor():
             layer.CreateFeature(feature)
 
     @staticmethod
-    def write_geometry_to_geojson(geom, out_path):
+    def write_geometry_to_geojson(geom, out_path: str):
         if os.path.exists(out_path):
             os.remove(out_path)
 
