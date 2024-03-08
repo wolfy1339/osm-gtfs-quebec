@@ -178,7 +178,7 @@ class GTFSProcessor():
 
         for service in self.gtfs_data['calendar_dates']['data']:
             if service['date'] == max_date:
-                service_prefix = service['service_id'][0:4]
+                service_prefix = service['service_id']
                 logger.info('Latest service is {}'.format(service_prefix))
                 break
 
@@ -186,21 +186,20 @@ class GTFSProcessor():
 
     def filter_gtfs_data(self):
         logger.info('Filtering the GTFS data...')
-        # prefix = self.service_prefix
+        prefix = self.service_prefix
 
-        # filtered_stops = [x for x in self.gtfs_data['stops']['data'] if x['stop_id'].startswith(prefix)]
-        # filtered_routes = [x for x in self.gtfs_data['routes']['data'] if x['route_id'].startswith(prefix)]
-        # filtered_trips = [x for x in self.gtfs_data['trips']['data'] if x['trip_id'].startswith(prefix)]
-        # filtered_stop_times = [x for x in self.gtfs_data['stop_times']['data'] if x['trip_id'].startswith(prefix)]
+        filtered_trips = [x for x in self.gtfs_data['trips']['data'] if x['service_id'] == prefix]
+        routes = set([x['route_id'] for x in filtered_trips])
+        trips = set([x['trip_id'] for x in filtered_trips])
+        filtered_routes = [x for x in self.gtfs_data['routes']['data'] if x['route_id'] in routes]
+        filtered_stop_times = [x for x in self.gtfs_data['stop_times']['data'] if x['trip_id'] in trips]
+        stops = set([x['stop_id'] for x in filtered_stop_times])
+        filtered_stops = [x for x in self.gtfs_data['stops']['data'] if x['stop_id'] in stops]
 
-        # self.gtfs_data['stops']['data'] = filtered_stops
-        # self.gtfs_data['routes']['data'] = filtered_routes
-        # self.gtfs_data['trips']['data'] = filtered_trips
-        # self.gtfs_data['stop_times']['data'] = filtered_stop_times
-
-        # Filter routes that are not in the trips table
-        trips = set([x['route_id'] for x in self.gtfs_data['trips']['data']])
-        self.gtfs_data['routes']['data'] = [x for x in self.gtfs_data['routes']['data'] if x['route_id'] in trips]
+        self.gtfs_data['stops']['data'] = filtered_stops
+        self.gtfs_data['routes']['data'] = filtered_routes
+        self.gtfs_data['trips']['data'] = filtered_trips
+        self.gtfs_data['stop_times']['data'] = filtered_stop_times
 
     def convert_gtfs_stops_to_osm(self):
         osm_id = -100000
@@ -946,7 +945,7 @@ output_dir = os.path.join(cwd, 'output')
 
 time1 = time.time()
 gtfs_processor = GTFSProcessor(gtfs_zipfile, boundaries_dir, output_dir)
-#gtfs_processor.get_latest_service_id()
+gtfs_processor.get_latest_service_id()
 gtfs_processor.filter_gtfs_data()
 gtfs_processor.convert_gtfs_stops_to_osm()
 gtfs_processor.get_existing_osm_data()
