@@ -1,7 +1,7 @@
 from io import TextIOWrapper
 import os, sys, shutil
 import csv
-from typing import Any, Literal, TypedDict
+from typing import Literal, overload
 from osgeo import ogr, osr
 import logging
 from tqdm import tqdm
@@ -14,22 +14,7 @@ import overpy
 import xml.etree.ElementTree as ET
 import xml.dom.minidom as mn
 
-GTFSDataKey = TypedDict('GTFSDataKey', {
-        'field_names': list[str],
-        'data': list[dict[str, str]]
-})
-GTFSData = TypedDict('GTFSData', {
-    'agency': GTFSDataKey,
-    'calendar_dates': GTFSDataKey,
-    'feed_info': GTFSDataKey,
-    'Horaire_Boucle_Partage': GTFSDataKey,
-    'routes': GTFSDataKey,
-    'shapes': GTFSDataKey,
-    'stop_times': GTFSDataKey,
-    'stops': GTFSDataKey,
-    'transfers': GTFSDataKey,
-    'trips': GTFSDataKey
-})
+from .local_types import GTFSData, GTFSStop
 
 ogr.UseExceptions()
 osr.UseExceptions()
