@@ -138,7 +138,7 @@ class GTFSProcessor():
 
         # Load boundaries into memory
         logger.info('Loading boundary data into memory')
-        self.boundaries = {}
+        self.boundaries: dict[str, ogr.Geometry] = {}
         boundary_files = os.listdir(boundaries_dir)
 
         for boundary_file in tqdm(boundary_files):
@@ -258,8 +258,8 @@ class GTFSProcessor():
 
         values = ['RTC', 'Réseau de transport de la Capitale']
 
-        for relation in routes_result_quebec.relations:
-            tags = relation.tags
+        for relation in routes_result_quebec.get_relations():
+            tags: dict[str, str] = relation.tags
             true_count = 0
 
             for v in tags.values():
@@ -303,8 +303,8 @@ class GTFSProcessor():
 
                 existing_routes.append(existing_route)
 
-        for relation in route_masters_result_quebec.relations:
-            tags = relation.tags
+        for relation in route_masters_result_quebec.get_relations():
+            tags: dict[str, str] = relation.tags
             true_count = 0
 
             for v in tags.values():
@@ -391,7 +391,7 @@ class GTFSProcessor():
         for gtfs_stop in self.gtfs_stops:
             coverage_points.AddGeometry(gtfs_stop['geom'])
 
-        self.extent = coverage_points.GetEnvelope()
+        self.extent: tuple[float, float, float, float] = coverage_points.GetEnvelope()
 
         coverage_points_utm = GTFSProcessor.reproject_geometry(coverage_points.Clone(), 4326, 32618)
 
@@ -836,7 +836,7 @@ class GTFSProcessor():
         return {"geom": line}
 
     @staticmethod
-    def write_data_to_geojson(data: list[GTFSStop], out_path: str, geom_field: str, field_keys: list = None, epsg_id=None):
+    def write_data_to_geojson(data: list[GTFSStop], out_path: str, geom_field: str, field_keys: list[str] = None, epsg_id=None):
         # Create path
         if os.path.exists(out_path):
             os.remove(out_path)
@@ -886,13 +886,13 @@ class GTFSProcessor():
         if os.path.exists(out_path):
             os.remove(out_path)
 
-        driver = ogr.GetDriverByName('GeoJSON')
-        ds = driver.CreateDataSource(out_path)
+        driver: ogr.Driver = ogr.GetDriverByName('GeoJSON')
+        ds: ogr.DataSource = driver.CreateDataSource(out_path)
 
         geom_type = geom.GetGeometryType()
 
-        layer = ds.CreateLayer(out_path, geom_type=geom_type)
-        layer_defn = layer.GetLayerDefn()
+        layer: ogr.Layer = ds.CreateLayer(out_path, geom_type=geom_type)
+        layer_defn: ogr.FeatureDefn = layer.GetLayerDefn()
 
         feature = ogr.Feature(layer_defn)
         feature.SetGeometry(geom)
