@@ -1,5 +1,5 @@
 import os, sys, shutil
-import csv, json
+import csv
 from typing import Any, Literal, TypedDict
 from osgeo import ogr, osr
 import logging
@@ -7,7 +7,6 @@ from tqdm import tqdm
 from collections import defaultdict
 from operator import itemgetter
 import time
-import argparse
 
 import overpy
 
