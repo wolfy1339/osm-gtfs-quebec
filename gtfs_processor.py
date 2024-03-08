@@ -132,27 +132,23 @@ class GTFSProcessor():
             self.gtfs_data[table_name] = {
                 "path": path,
             }
+            
+            def process_csv(csvfile):
+                reader = csv.reader(csvfile)
 
+                field_names = next(reader)
+                self.gtfs_data[table_name]["field_names"] = field_names
+
+                dict_reader = csv.DictReader(csvfile, fieldnames=field_names)
+                data = [{k.strip(): v.strip() for k, v in row.items()} for row in dict_reader]
+                self.gtfs_data[table_name]["data"] = data
+            
             try:
                 with open(path, encoding='utf-8') as csvfile:
-                    reader = csv.reader(csvfile)
-
-                    field_names = next(reader)
-                    self.gtfs_data[table_name]["field_names"] = field_names
-
-                    dict_reader = csv.DictReader(csvfile, fieldnames=field_names)
-                    data = [{k.strip(): v.strip() for k, v in row.items()} for row in dict_reader]
-                    self.gtfs_data[table_name]["data"] = data
+                    process_csv(csvfile)
             except UnicodeDecodeError:
                 with open(path, encoding='cp1252') as csvfile:
-                    reader = csv.reader(csvfile)
-
-                    field_names = next(reader)
-                    self.gtfs_data[table_name]["field_names"] = field_names
-
-                    dict_reader = csv.DictReader(csvfile, fieldnames=field_names)
-                    data = [{k.strip(): v.strip() for k, v in row.items()} for row in dict_reader]
-                    self.gtfs_data[table_name]["data"] = data
+                    process_csv(csvfile)
 
         # Load boundaries into memory
         logger.info('Loading boundary data into memory')
