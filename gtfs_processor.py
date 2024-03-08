@@ -654,14 +654,19 @@ class GTFSProcessor():
         logger.info('Resolving route relation conflicts')
         for existing_route in self.existing_data['routes']:
             existing_ref = existing_route['tags']['ref']
-            existing_name = existing_route['tags']['name']
+            try:
+                existing_name = existing_route['tags']['name']
+            except KeyError:
+                existing_name = None
 
             for route_relation in self.route_relations:
                 new_ref = route_relation['tags']['ref']
                 new_name = route_relation['tags']['name']
                 new_id = route_relation["props"]["id"]
 
-                if new_ref == existing_ref and new_name == existing_name:
+                if new_ref == existing_ref and (new_name == existing_name or existing_name is None):
+                    if existing_name is None:
+                        existing_route['tags']['name'] = new_name
                     logger.info('... Found existing route. Resolving.')
                     # Set id to existing id
                     # add action=modify to props
