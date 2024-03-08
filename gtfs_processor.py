@@ -195,7 +195,7 @@ class GTFSProcessor():
             point = ogr.Geometry(ogr.wkbPoint)
             point.AddPoint(float(stop['stop_lon']), float(stop['stop_lat']))
 
-            gtfs_stop = {
+            gtfs_stop: GTFSStop = {
                 'props': {
                     'id': osm_id,
                     'lon': stop['stop_lon'],
@@ -398,12 +398,12 @@ class GTFSProcessor():
 
         coverage_points_utm = GTFSProcessor.reproject_geometry(coverage_points.Clone(), 4326, 32618)
 
-        coverage_utm_gtfs = coverage_points_utm.Buffer(buffer_gtfs)
-        coverage_utm_gtfs_dissolved = coverage_utm_gtfs.UnionCascaded()
+        coverage_utm_gtfs: ogr.Geometry = coverage_points_utm.Buffer(buffer_gtfs)
+        coverage_utm_gtfs_dissolved: ogr.Geometry = coverage_utm_gtfs.UnionCascaded()
         coverage_gtfs = GTFSProcessor.reproject_geometry(coverage_utm_gtfs_dissolved, 32618, 4326)
 
-        coverage_utm_osm = coverage_points_utm.Buffer(buffer_osm)
-        coverage_utm_osm_dissolved = coverage_utm_osm.UnionCascaded()
+        coverage_utm_osm: ogr.Geometry = coverage_points_utm.Buffer(buffer_osm)
+        coverage_utm_osm_dissolved: ogr.Geometry = coverage_utm_osm.UnionCascaded()
         coverage_osm = GTFSProcessor.reproject_geometry(coverage_utm_osm_dissolved, 32618, 4326)
 
         logger.info('Writing proximity coverage to GeoJSON')
@@ -623,6 +623,7 @@ class GTFSProcessor():
                 },
                 "tags": {
                     "name": f"Autobus {key}",
+                    "name": f"Autobus {route["route_short_name"]}",
                     "ref": key,
                     "network": "RTC",
                     "network:wikidata": "Q3456768",
@@ -676,7 +677,7 @@ class GTFSProcessor():
                                     break
                     break
 
-    def write_to_xml(self, types: list):
+    def write_to_xml(self, types: list[str]):
         #print(types)
         logger.info('Writing JOSM XML files for {}.'.format(', '.join(types)))
         output_file = os.path.join(self.output_dir, 'gtfs_quebec.xml')
@@ -762,7 +763,7 @@ class GTFSProcessor():
         tree = ET.ElementTree(root)
         tree.write(output_file, encoding='unicode')
 
-    def get_route_stops(self, route_id):
+    def get_route_stops(self, route_id: str):
         trips = defaultdict(dict)
 
         for trip in self.gtfs_data['trips']['data']:
@@ -813,7 +814,7 @@ class GTFSProcessor():
 
         return first_stop_name, last_stop_name, stops, longest_trip_id
 
-    def make_trip_shape(self, trip_id):
+    def make_trip_shape(self, trip_id: str):
         trips = self.gtfs_data['trips']['data']
         shapes = self.gtfs_data['shapes']['data']
 
@@ -841,7 +842,7 @@ class GTFSProcessor():
         return {"geom": line}
 
     @staticmethod
-    def write_data_to_geojson(data, out_path, geom_field, field_keys: list = None, epsg_id=None):
+    def write_data_to_geojson(data: list[GTFSStop], out_path: str, geom_field: str, field_keys: list = None, epsg_id=None):
         # Create path
         if os.path.exists(out_path):
             os.remove(out_path)
@@ -887,7 +888,7 @@ class GTFSProcessor():
             layer.CreateFeature(feature)
 
     @staticmethod
-    def write_geometry_to_geojson(geom, out_path: str):
+    def write_geometry_to_geojson(geom: ogr.Geometry, out_path: str):
         if os.path.exists(out_path):
             os.remove(out_path)
 
@@ -904,7 +905,16 @@ class GTFSProcessor():
         layer.CreateFeature(feature)
 
     @staticmethod
-    def reproject_geometry(geom, in_epsg, out_epsg, return_wkt=False):
+    @overload
+    def reproject_geometry(geom: ogr.Geometry, in_epsg: int, out_epsg: int) -> ogr.Geometry: ...
+    @staticmethod
+    @overload
+    def reproject_geometry(geom: ogr.Geometry, in_epsg: int, out_epsg: int, return_wkt:Literal[False]) -> str: ...
+    @staticmethod
+    @overload
+    def reproject_geometry(geom: ogr.Geometry, in_epsg: int, out_epsg: int, return_wkt:Literal[True]) -> ogr.Geometry: ...
+    @staticmethod
+    def reproject_geometry(geom: ogr.Geometry, in_epsg: int, out_epsg: int, return_wkt:bool=False) -> str | ogr.Geometry:
         source = osr.SpatialReference()
         source.ImportFromEPSG(in_epsg)
 
