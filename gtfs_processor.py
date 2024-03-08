@@ -171,12 +171,12 @@ class GTFSProcessor():
         service_prefix = None
         logger.info('Determining latest service from calendar file')
         dates = set()
-        for service in self.gtfs_data['calendar']['data']:
+        for service in self.gtfs_data['calendar_dates']['data']:
             dates.add(service['date'])
 
         max_date = max(list(dates))
 
-        for service in self.gtfs_data['calendar']['data']:
+        for service in self.gtfs_data['calendar_dates']['data']:
             if service['date'] == max_date:
                 service_prefix = service['service_id'][0:4]
                 logger.info('Latest service is {}'.format(service_prefix))
