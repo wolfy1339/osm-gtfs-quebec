@@ -1,0 +1,4 @@
+gtfs/
+*.zip
+.mypy_cache/
+output/
