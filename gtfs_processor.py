@@ -537,8 +537,8 @@ class GTFSProcessor():
         '''
 
         route_masters = defaultdict[str, list[dict[str, str]]](list)
-        route_master_relations = []
-        route_relations = []
+        self.route_master_relations = []
+        self.route_relations = []
 
         # Create directory for shapes
         shapes_dir = os.path.join(self.output_dir, 'shapes')
@@ -615,7 +615,7 @@ class GTFSProcessor():
                         "nodes": member_nodes
                     }
                 }
-                route_relations.append(route_relation)
+                self.route_relations.append(route_relation)
 
                 member_route = {
                     "props": {
@@ -625,8 +625,6 @@ class GTFSProcessor():
                     }
                 }
                 member_routes.append(member_route)
-
-            self.route_relations = route_relations
 
             # Create route master relation
             logger.info('Creating route master relation for {}'.format(key))
@@ -654,9 +652,7 @@ class GTFSProcessor():
                 },
                 "members": member_routes
             }
-            route_master_relations.append(route_master_relation)
-
-            self.route_master_relations = route_master_relations
+            self.route_master_relations.append(route_master_relation)
 
     def conflate_relations(self):
         logger.info('Resolving route relation conflicts')
