@@ -568,7 +568,7 @@ class GTFSProcessor():
                 # member_ways = []
 
                 logger.info('... Finding longest trip and stops for {}'.format(route_ref))
-                first_stop_name, last_stop_name, stop_ids, trip_id = self.get_route_stops(route['route_id'])
+                first_stop_name, last_stop_name, stops_data, trip_id = self.get_route_stops(route['route_id'])
 
                 # Build the shape to write to geojson
                 trip_shape = self.make_trip_shape(trip_id)
@@ -580,7 +580,7 @@ class GTFSProcessor():
                 trip_filename = os.path.join(shapes_dir, '{}_route.geojson'.format(route_ref))
                 GTFSProcessor.write_data_to_geojson([trip_shape], trip_filename, 'geom', ['fields'])
 
-                for i, stop in enumerate(stop_ids):
+                for stop in stops_data:
                     member_node = {
                         "props": {
                             "type": 'node',
