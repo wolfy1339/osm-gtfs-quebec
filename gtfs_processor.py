@@ -823,7 +823,7 @@ class GTFSProcessor():
         for i, stop in enumerate(stops_sorted):
             for final_stop in self.final_stops:
                 if stop['stop_id'] in final_stop['gtfs_props']['stop_id']:
-                    stops.append((final_stop['props']['id'],stop['pickup_type'],stop['dropoff_type']))
+                    stops.append((final_stop['props']['id'],stop['pickup_type'],stop['drop_off_type']))
                     if i == 0:
                         first_stop_name = final_stop['tags']['name']
                     if i == len(stops) - 1:
