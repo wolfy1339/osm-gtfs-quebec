@@ -384,7 +384,10 @@ class GTFSProcessor():
             if not existing_route['tags'].get('ref'):
                 print(osm_id)
             ref = existing_route['tags']['ref']
-            name = existing_route['tags']['name']
+            try:
+                name = existing_route['tags']['name']
+            except KeyError:
+                name = f"Parcours {existing_route['tags']['ref']}"
             rows.append([osm_id, name, ref])
 
         rows.sort(key=lambda x: x[1])
