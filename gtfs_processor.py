@@ -229,7 +229,6 @@ class GTFSProcessor():
                     'public_transport': 'platform',
                     'ref': stop['stop_code'],
                     'network:wikidata': 'Q3456768',
-                    'network:wikipedia': 'en:Réseau de transport de la Capitale',
                     'network': 'RTC',
                     'operator': 'Réseau de transport de la Capitale',
                     'wheelchair': 'yes' if stop['wheelchair_boarding'] == '1' else 'no',
