@@ -207,7 +207,6 @@ class GTFSProcessor():
                     'name': stop['stop_name'],
                     'description': stop['stop_desc'],
                     'public_transport': 'platform',
-                    'local_ref': stop['stop_name'].split("Quai")[1].strip() if "Quai" in stop['stop_name'] else None,
                     'ref': stop['stop_code'],
                     'network:wikidata': 'Q3456768',
                     'network': 'RTC',
@@ -219,6 +218,8 @@ class GTFSProcessor():
                 },
                 "geom": point,
             }
+            if ("Quai" in stop['stop_desc']):
+                gtfs_stop['tags']['local_ref'] = stop['stop_desc'].split("Quai")[1].strip()
 
             gtfs_stops.append(gtfs_stop)
 
