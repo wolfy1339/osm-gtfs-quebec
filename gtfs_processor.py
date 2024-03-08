@@ -146,11 +146,10 @@ class GTFSProcessor():
             city = boundary_file[:-4]
 
             with open(path) as f:
-                geom = ogr.CreateGeometryFromWkt(f.read())
-                self.boundaries[city] = geom
+                self.boundaries[city] = ogr.CreateGeometryFromWkt(f.read())
 
     def get_latest_service_id(self):
-        service_prefix = None
+        self.service_prefix = None
         logger.info('Determining latest service from calendar file')
         dates = set()
         for service in self.gtfs_data['calendar_dates']['data']:
@@ -160,11 +159,9 @@ class GTFSProcessor():
 
         for service in self.gtfs_data['calendar_dates']['data']:
             if service['date'] == max_date:
-                service_prefix = service['service_id']
-                logger.info('Latest service is {}'.format(service_prefix))
+                self.service_prefix = service['service_id']
+                logger.info(f'Latest service is {self.service_prefix}')
                 break
-
-        self.service_prefix = service_prefix
 
     def filter_gtfs_data(self):
         logger.info('Filtering the GTFS data...')
@@ -384,7 +381,7 @@ class GTFSProcessor():
                 writer.writerow(row)
 
     def conflate_stops(self):
-        final_stops = []
+        self.final_stops = []
 
         logger.info('Calculating coverages for merging')
         buffer_gtfs = 5  # meter
@@ -460,16 +457,14 @@ class GTFSProcessor():
             if potential_stop is None:
                 logger.warning('No stop found during merging... This should not happen')
             else:
-                final_stops.append(potential_stop)
-
-        self.final_stops = final_stops
+                self.final_stops.append(potential_stop)
 
         logger.info('GTFS stops count before merging: {}'.format(len(self.gtfs_stops)))
         logger.info('GTFS stops count after merging: {}'.format(len(self.final_stops)))
 
         logger.info('Writing final stops to file')
         final_stops_path = os.path.join(self.output_dir, 'final_stops.geojson')
-        GTFSProcessor.write_data_to_geojson(final_stops, final_stops_path, "geom", ["props", "tags", "gtfs_props"])
+        GTFSProcessor.write_data_to_geojson(self.final_stops, final_stops_path, "geom", ["props", "tags", "gtfs_props"])
 
     def create_relations(self):
         osm_id_route_master = -1000
