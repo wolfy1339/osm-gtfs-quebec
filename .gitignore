@@ -2,3 +2,5 @@ gtfs/
 *.zip
 .mypy_cache/
 output/
+__pycache__/
+*.pyc
