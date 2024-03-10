@@ -1,7 +1,8 @@
 from io import TextIOWrapper
 import os, sys, shutil
+import re
 import csv
-from typing import Literal, overload
+from typing import Any, Literal, Optional, overload
 from osgeo import ogr, osr
 import logging
 from tqdm import tqdm
@@ -10,11 +11,12 @@ from operator import itemgetter
 import time
 
 import overpy
+from overpy import RelationMember
 
 import xml.etree.ElementTree as ET
 import xml.dom.minidom as mn
 
-from .local_types import GTFSData, GTFSStop
+from local_types import ExistingData, ExistingRouteMasterRelation, ExistingStops, GTFSData, GTFSStop, RouteMasterRelation, RouteRelationMembers, RouteMemberRelation, RouteRelation, RouteStopsData
 
 ogr.UseExceptions()
 osr.UseExceptions()
@@ -108,7 +110,7 @@ class GTFSProcessor():
 
         # Load GTFS data into memory
         logger.info('Loading GTFS data into memory')
-        self.gtfs_data: GTFSData = {}
+        self.gtfs_data: GTFSData = {} # type: ignore
 
         filenames = os.listdir(self.gtfs_dir)
 
@@ -225,11 +227,11 @@ class GTFSProcessor():
         GTFSProcessor.write_data_to_geojson(self.gtfs_stops, out_path, "geom", ["props", "tags", "gtfs_props"])
 
     def get_existing_osm_data(self):
-        self.existing_data = {}
+        self.existing_data: ExistingData = {} # type: ignore
 
-        existing_stops = []
-        existing_routes = []
-        existing_route_masters = []
+        existing_stops: list[ExistingStops] = []
+        existing_routes: list[RouteRelation] = []
+        existing_route_masters: list[ExistingRouteMasterRelation] = []
 
         # Get existing stops
         logger.info('Getting existing stops...')
@@ -238,17 +240,17 @@ class GTFSProcessor():
 
         for node in tqdm(stops_result_quebec.nodes):
             geom = ogr.Geometry(ogr.wkbPoint)
-            geom.AddPoint(float(node.lon), float(node.lat))
+            geom.AddPoint(float(node.lon), float(node.lat)) # type: ignore
 
-            existing_stop = {
+            existing_stop: ExistingStops = {
                 "props": {
                     "id": node.id,
                     "lat": node.lat,
                     "lon": node.lon
                 },
-                "tags": node.tags,
-                "geom": geom
-            }
+                "tags": node.tags, # type: ignore, # type: ignore
+                "geom": geom # type: ignore
+            } # type: ignore
             existing_stops.append(existing_stop)
 
         # Get existing routes
@@ -259,7 +261,7 @@ class GTFSProcessor():
         values = ['RTC', 'Réseau de transport de la Capitale']
 
         for relation in routes_result_quebec.get_relations():
-            tags: dict[str, str] = relation.tags
+            tags: dict[str, str] = relation.tags # type: ignore
             true_count = 0
 
             for v in tags.values():
@@ -280,7 +282,7 @@ class GTFSProcessor():
                                     "ref": member.ref,
                                     "role": member.role
                                 }
-                            })
+                            }) # type: ignore
                         if member._type_value == 'way':
                             relation_member_ways.append({
                                 "props": {
@@ -290,13 +292,13 @@ class GTFSProcessor():
                                 }
                             })
 
-                existing_route = {
+                existing_route: RouteRelation = {
                     "props": {
                         "id": relation.id
                     },
                     "tags": tags,
                     "members": {
-                        "nodes": relation_member_nodes,
+                        "nodes": relation_member_nodes, # type: ignore
                         "ways": relation_member_ways
                     }
                 }
@@ -304,7 +306,7 @@ class GTFSProcessor():
                 existing_routes.append(existing_route)
 
         for relation in route_masters_result_quebec.get_relations():
-            tags: dict[str, str] = relation.tags
+            tags: dict[str, str] = relation.tags # type: ignore
             true_count = 0
 
             for v in tags.values():
@@ -313,20 +315,20 @@ class GTFSProcessor():
 
             if true_count > 0:
 
-                relation_member_nodes = []
+                relation_member_nodes: list[RelationMember] = []
 
                 if relation.members:
                     for member in relation.members:
                         if member._type_value == 'relation':
-                            relation_member_nodes.append(member)
+                            relation_member_nodes.append(member) # type: ignore
 
-                existing_master_route = {
+                existing_master_route: ExistingRouteMasterRelation = {
                     "props": {
                         "id": relation.id
                     },
                     "tags": tags,
                     "members": {
-                        "relations": relation_member_nodes
+                        "relations": relation_member_nodes # type: ignore
                     }
                 }
 
@@ -384,8 +386,8 @@ class GTFSProcessor():
         self.final_stops = []
 
         logger.info('Calculating coverages for merging')
-        buffer_gtfs = 5  # meter
-        buffer_osm = 5  # meter
+        buffer_gtfs = 3  # meter
+        buffer_osm = 3  # meter
         coverage_points = ogr.Geometry(ogr.wkbMultiPoint)
 
         for gtfs_stop in self.gtfs_stops:
@@ -418,7 +420,7 @@ class GTFSProcessor():
         logger.info('Merging stops by proximity')
         for gtfs_buffer in tqdm(coverage_gtfs):
 
-            potential_stop = None
+            potential_stop = None # type: ignore
 
             intersections = []
             for gtfs_stop in self.gtfs_stops:
@@ -430,7 +432,7 @@ class GTFSProcessor():
                 codes_joined = ";".join(codes)
                 ids = list(set([intersection['gtfs_props']['gtfs:stop_id'] for intersection in intersections]))
 
-                potential_stop = intersections[0].copy()
+                potential_stop: GTFSStop = intersections[0].copy()
                 potential_stop['tags']['ref'] = codes_joined
                 potential_stop['gtfs_props']['gtfs:stop_id'] = ";".join(ids)
 
@@ -513,8 +515,8 @@ class GTFSProcessor():
         '''
 
         route_masters = defaultdict[str, list[dict[str, str]]](list)
-        self.route_master_relations = []
-        self.route_relations = []
+        self.route_master_relations: list[RouteMasterRelation] = []
+        self.route_relations: list[RouteRelation] = []
 
         # Create directory for shapes
         shapes_dir = os.path.join(self.output_dir, 'shapes')
@@ -529,95 +531,98 @@ class GTFSProcessor():
 
         for key, route_master in tqdm(route_masters.items()):
             logger.info(f'Creating route relations for {key}')
-            round_trip = "yes" if len(route_master) == 1 else "no"
-
-            member_routes = []
+            member_routes: list[RouteMemberRelation] = []
 
             for route in route_master:
-                osm_id_route -= 1
 
                 route_ref = route['route_short_name']
                 route_name = route['route_desc']
                 route_color = f"#{route['route_color']}"
 
-                member_nodes = []
                 # member_ways = []
 
-                logger.info('... Finding longest trip and stops for {}'.format(route_ref))
-                first_stop_name, last_stop_name, stops_data, trip_id = self.get_route_stops(route['route_id'])
+                logger.info(f'... Finding longest trip and stops for {route_ref}')
+                trips = self.get_route_stops(route['route_id'])
 
-                # Build the shape to write to geojson
-                trip_shape = self.make_trip_shape(trip_id)
-                trip_shape.update({
-                    "fields": {
-                        "ref": route_ref
-                    }
-                })
-                trip_filename = os.path.join(shapes_dir, '{}_route.geojson'.format(route_ref))
-                GTFSProcessor.write_data_to_geojson([trip_shape], trip_filename, 'geom', ['fields'])
+                for trip in trips:
+                    osm_id_route -= 1
+                    member_nodes: list[RouteRelationMembers] = []
+                    first_stop_name = trip['first_stop_name']
+                    last_stop_name = trip['last_stop_name']
+                    stops_data = trip['stops']
+                    trip_id = trip['trip_id']
+                    # Build the shape to write to geojson
+                    trip_shape = self.make_trip_shape(trip_id)
+                    trip_shape.update({
+                        "fields": { # type: ignore
+                            "ref": route_ref
+                        }
+                    }) # type: ignore
+                    headboard = [x['trip_headsign'] for x in self.gtfs_data['trips']['data'] if x["trip_id"] == trip_id][0].replace(" / ", "-").replace("/","-")
+                    trip_filename = os.path.join(shapes_dir, f'{headboard}_route.geojson')
+                    GTFSProcessor.write_data_to_geojson([trip_shape], trip_filename, 'geom', ['fields'])
 
-                for stop in stops_data:
-                    member_node = {
+                    for stop in stops_data:
+                        member_node: RouteRelationMembers = {
+                            "props": {
+                                "type": 'node',
+                                "ref": stop[0],
+                                "role": 'platform' if (stop[1] == '0' and stop[2] == '0') else 'platform_exit_only' if stop[1] == '2' else 'platform_entry_only'
+                            }
+                        }
+                        member_nodes.append(member_node)
+
+                    route_relation: RouteRelation = {
                         "props": {
-                            "type": 'node',
-                            "ref": stop[0],
-                            "role": 'platform' if (stop[1] == '0' and stop[2] == '0') else 'platform_exit_only' if stop[1] == '2' else 'platform_entry_only'
+                            "id": osm_id_route
+                        },
+                        "tags": {
+                            "name": f"Parcours {route_ref} vers {last_stop_name}",
+                            "ref": route_ref,
+                            "type": "route",
+                            "route": "bus",
+                            "network": "RTC",
+                            "network:wikidata": "Q3456768",
+                            "operator": "Réseau de transport de la Capitale",
+                            "from": first_stop_name,
+                            "to": last_stop_name,
+                            "colour": route_color,
+                            "public_transport:version": "2"
+                        },
+                        "members": {
+                            "nodes": member_nodes
                         }
                     }
-                    # if i == 0:
-                    # 	member["props"]["role"] = 'platform_entry_only'
-                    # if i == len(stop_ids) - 1:
-                    # 	member['props']['role'] = 'platform_exit_only'
-                    member_nodes.append(member_node)
 
-                route_relation = {
-                    "props": {
-                        "id": osm_id_route
-                    },
-                    "tags": {
-                        "name": f"Autobus {route_ref}: {first_stop_name} => {last_stop_name}",
-                        "ref": route_ref,
-                        "type": "route",
-                        "route": "bus",
-                        "network": "RTC",
-                        "network:wikidata": "Q3456768",
-                        "operator": "Réseau de transport de la Capitale",
-                        "from": first_stop_name,
-                        "to": last_stop_name,
-                        "colour": route_color,
-                        "public_transport:version": 2
-                    },
-                    "members": {
-                        "nodes": member_nodes
-                    }
-                }
-                self.route_relations.append(route_relation)
+                    if re.search(r"[A-Z]", route_name) is not None:
+                        route_relation['tags']['school'] = "yes"
+                    self.route_relations.append(route_relation)
 
-                member_route = {
-                    "props": {
-                        "type": "relation",
-                        "ref": osm_id_route,
-                        "role": ""
+                    member_route: RouteMemberRelation = {
+                        "props": {
+                            "type": "relation",
+                            "id": osm_id_route,
+                            "role": ""
+                        }
                     }
-                }
-                member_routes.append(member_route)
+                    member_routes.append(member_route)
 
             # Create route master relation
-            logger.info('Creating route master relation for {}'.format(key))
+            logger.info(f'Creating route master relation for {key}')
 
             # Only create route_master_relation if there are more than 1 directions
-            if round_trip == "yes":
-                logger.info('... {} is probably a loop route. Skipping.'.format(key))
+            if len(member_routes) < 1:
+                logger.info(f'... {key} is probably a loop route. Skipping.')
                 continue
 
             osm_id_route_master -= 1
 
-            route_master_relation = {
+            route_master_relation: RouteMasterRelation = {
                 "props": {
                     "id": osm_id_route_master
                 },
                 "tags": {
-                    "name": f"Autobus {route["route_short_name"]}",
+                    "name": f"Parcours {key}",
                     "ref": key,
                     "network": "RTC",
                     "network:wikidata": "Q3456768",
@@ -628,6 +633,9 @@ class GTFSProcessor():
                 },
                 "members": member_routes
             }
+
+            if re.search(r"[A-Z]", key) is not None:
+                route_master_relation['tags']['school'] = "yes"
             self.route_master_relations.append(route_master_relation)
 
     def conflate_relations(self):
@@ -657,17 +665,17 @@ class GTFSProcessor():
 
                     existing_id = existing_route["props"]["id"]
 
-                    route_relation["props"]["id"] = existing_id
+                    route_relation["props"]["id"] = existing_id # type: ignore
                     route_relation["props"]["action"] = "modify"
 
                     if 'ways' in existing_route['members']:
-                        route_relation['members']['ways'] = existing_route['members']['ways']
+                        route_relation['members']['ways'] = existing_route['members']['ways'] # type: ignore
 
                     for route_master_relation in self.route_master_relations:
-                        if route_master_relation['tags']['ref'] == new_ref[:-1]:
+                        if route_master_relation['tags']['ref'] == new_ref:
                             for member in route_master_relation['members']:
-                                if member['props']['ref'] == new_id:
-                                    member['props']['ref'] = existing_id
+                                if member['props']['id'] == new_id:
+                                    member['props']['id'] = existing_id # type: ignore
                                     break
                     break
 
@@ -736,7 +744,7 @@ class GTFSProcessor():
                 relation = ET.SubElement(root, 'relation')
                 relation.set('version', '1')
 
-                for key, value in route_master_relation.items():
+                for key in route_master_relation:
                     if key == 'tags':
                         for k, v in route_master_relation['tags'].items():
                             tag = ET.SubElement(relation, 'tag')
@@ -749,12 +757,13 @@ class GTFSProcessor():
                         for member in route_master_relation['members']:
                             mem = ET.SubElement(relation, 'member')
 
-                            for key, value in member.items():
+                            for key in member:
                                 if key == 'props':
                                     for k, v in member['props'].items():
                                         mem.set(k, str(v))
 
         tree = ET.ElementTree(root)
+        ET.indent(tree)
         tree.write(output_file, encoding='unicode')
 
     def get_route_stops(self, route_id: str):
@@ -764,49 +773,52 @@ class GTFSProcessor():
             if trip['route_id'] == route_id:
                 trip_id = trip['trip_id']
 
-                stops = []
-
-                for stop_time in self.gtfs_data['stop_times']['data']:
-                    if stop_time['trip_id'] == trip_id:
-                        stop = {
-                            "stop_id": stop_time["stop_id"],
-                            "stop_sequence": int(stop_time["stop_sequence"]),
-                            "pickup_type": stop_time["pickup_type"],
-                            "drop_off_type": stop_time["drop_off_type"],
-                        }
-
-                        stops.append(stop)
+                stops = [{
+                    "stop_id": stop_time["stop_id"],
+                    "stop_sequence": int(stop_time["stop_sequence"]),
+                    "pickup_type": stop_time["pickup_type"],
+                    "drop_off_type": stop_time["drop_off_type"],
+                } for stop_time in self.gtfs_data['stop_times']['data'] if stop_time['trip_id'] == trip_id]
 
                 trips[trip_id]['stops'] = stops
                 trips[trip_id]['stop_count'] = len(stops)
+                trips[trip_id]['direction_id'] = trip['direction_id']
 
-        trips = dict(trips)
         logger.info('... ... Found {} trips for route id {}'.format(len(trips.keys()), route_id))
 
         # # Find the longest trip and sort the stops
-        longest_trip_id = max(trips, key=lambda v: trips[v]['stop_count'])
-        logger.info('... ... ... the longest trip is {} with {} stops'.format(longest_trip_id,
-                                                                               trips[longest_trip_id]['stop_count']))
-
-        # Sort the stops
-        trip_stops = trips[longest_trip_id]['stops']
-        # stops.sort(key=itemgetter('stop_sequence'))
-        stops_sorted = sorted(trip_stops, key=itemgetter('stop_sequence'))
+        longest_trips = [
+            max(trips, key=lambda v: trips[v]['stop_count'] and trips[v]['direction_id'] == '0'),
+            max(trips, key=lambda v: trips[v]['stop_count'] and trips[v]['direction_id'] == '1')
+        ]
+        longest_trip_ids = ", ".join([trip_id for trip_id in longest_trips])
+        stop_counts = ",".join([str(trips[trip_id]['stop_count']) for trip_id in longest_trips])
+ 
+        logger.info('... ... ... the longest trips are {} with {} stops'.format(longest_trip_ids, stop_counts))
 
         # Map to final stop ids
-        first_stop_name = None
-        last_stop_name = None
-        stops: list[tuple[str, str, str]] = []
-        for i, stop in enumerate(stops_sorted):
-            for final_stop in self.final_stops:
-                if stop['stop_id'] in final_stop['gtfs_props']['gtfs:stop_id']:
-                    stops.append((final_stop['props']['id'], stop['pickup_type'], stop['drop_off_type']))
-                    if i == 0:
-                        first_stop_name = final_stop['tags']['name']
-                    if i == len(stops) - 1:
-                        last_stop_name = final_stop['tags']['name']
+        final_data: list[RouteStopsData] = []
 
-        return first_stop_name, last_stop_name, stops, longest_trip_id
+        for trip in longest_trips:
+            trip_stops: list[dict[str,str]] = trips[trip]['stops']
+            stops_sorted = sorted(trip_stops, key=itemgetter('stop_sequence'))
+            stops = []
+            first_stop_name = next((final_stop['tags']['name'] for stop in stops_sorted for final_stop in self.final_stops if stop['stop_id'] in final_stop['gtfs_props']['gtfs:stop_id']), "")
+            last_stop_name = next((final_stop['tags']['name'] for stop in reversed(stops_sorted) for final_stop in self.final_stops if stop['stop_id'] in final_stop['gtfs_props']['gtfs:stop_id']), "")
+
+            for stop in stops_sorted:
+                for final_stop in self.final_stops:
+                    if stop['stop_id'] in final_stop['gtfs_props']['gtfs:stop_id']:
+                        stops.append((final_stop['props']['id'], stop['pickup_type'], stop['drop_off_type']))
+
+            final_data.append({
+                "first_stop_name": first_stop_name,
+                "last_stop_name": last_stop_name,
+                "trip_id": trip,
+                "stops": stops,
+            })
+
+        return final_data
 
     def make_trip_shape(self, trip_id: str):
         trips = self.gtfs_data['trips']['data']
@@ -836,7 +848,7 @@ class GTFSProcessor():
         return {"geom": line}
 
     @staticmethod
-    def write_data_to_geojson(data: list[GTFSStop], out_path: str, geom_field: str, field_keys: list[str] = None, epsg_id=None):
+    def write_data_to_geojson(data: list[Any], out_path: str, geom_field: str, field_keys: Optional[list[str]] = None, epsg_id:Optional[int]=None):
         # Create path
         if os.path.exists(out_path):
             os.remove(out_path)
