@@ -601,7 +601,7 @@ class GTFSProcessor():
                     member_route: RouteMemberRelation = {
                         "props": {
                             "type": "relation",
-                            "id": osm_id_route,
+                            "ref": osm_id_route,
                             "role": ""
                         }
                     }
@@ -652,7 +652,10 @@ class GTFSProcessor():
                 new_name = route_relation['tags']['name']
                 new_id = route_relation["props"]["id"]
 
-                if new_ref == existing_ref and (new_name == existing_name or existing_name is None):
+                by_ref = [i for i in self.existing_data['routes'] if i['tags']['ref'] == new_ref]
+                by_id = [i for i in self.route_relations if i['props']['id'] == new_id]
+                if new_ref == existing_ref and (new_name == existing_name or existing_name is None or
+                                                (len(by_ref) == 1 and len(by_id) == 0)):
                     if existing_name is None:
                         existing_route['tags']['name'] = new_name
                     logger.info('... Found existing route. Resolving.')
@@ -674,8 +677,8 @@ class GTFSProcessor():
                     for route_master_relation in self.route_master_relations:
                         if route_master_relation['tags']['ref'] == new_ref:
                             for member in route_master_relation['members']:
-                                if member['props']['id'] == new_id:
-                                    member['props']['id'] = existing_id # type: ignore
+                                if member['props']['ref'] == new_id:
+                                    member['props']['ref'] = existing_id # type: ignore
                                     break
                     break
 
@@ -763,7 +766,6 @@ class GTFSProcessor():
                                         mem.set(k, str(v))
 
         tree = ET.ElementTree(root)
-        ET.indent(tree)
         tree.write(output_file, encoding='unicode')
 
     def get_route_stops(self, route_id: str):
@@ -803,11 +805,11 @@ class GTFSProcessor():
             trip_stops: list[dict[str,str]] = trips[trip]['stops']
             stops_sorted = sorted(trip_stops, key=itemgetter('stop_sequence'))
             stops = []
-            first_stop_name = next((final_stop['tags']['name'] for stop in stops_sorted for final_stop in self.final_stops if stop['stop_id'] in final_stop['gtfs_props']['gtfs:stop_id']), "")
-            last_stop_name = next((final_stop['tags']['name'] for stop in reversed(stops_sorted) for final_stop in self.final_stops if stop['stop_id'] in final_stop['gtfs_props']['gtfs:stop_id']), "")
+            first_stop_name = next((final_stop['tags']['name'] for stop in stops_sorted for final_stop in self.final_stops if 'gtfs:stop_id' in final_stop['gtfs_props'] and stop['stop_id'] in final_stop['gtfs_props']['gtfs:stop_id']), "")
+            last_stop_name = next((final_stop['tags']['name'] for stop in reversed(stops_sorted) for final_stop in self.final_stops if 'gtfs:stop_id' in final_stop['gtfs_props'] and stop['stop_id'] in final_stop['gtfs_props']['gtfs:stop_id']), "")
 
             for stop in stops_sorted:
-                for final_stop in self.final_stops:
+                for final_stop in [i for i in self.final_stops if 'gtfs:stop_id' in i['gtfs_props']]:
                     if stop['stop_id'] in final_stop['gtfs_props']['gtfs:stop_id']:
                         stops.append((final_stop['props']['id'], stop['pickup_type'], stop['drop_off_type']))
 
@@ -854,7 +856,7 @@ class GTFSProcessor():
             os.remove(out_path)
 
         # Get GeoJSON driver
-        driver = ogr.GetDriverByName('GeoJSON')
+        driver: ogr.Driver = ogr.GetDriverByName('GeoJSON')
 
         ds = driver.CreateDataSource(out_path)
 
@@ -865,7 +867,8 @@ class GTFSProcessor():
             spatial_ref.ImportFromEPSG(4326)
 
         # Get geom type
-        geom_type = data[0][geom_field].GetGeometryType()
+        geom: ogr.Geometry = data[0][geom_field]
+        geom_type: ogr.wkbLineString = geom.GetGeometryType()
 
         layer = ds.CreateLayer(out_path, geom_type=geom_type, srs=spatial_ref)
 
@@ -947,7 +950,7 @@ gtfs_processor.get_latest_service_id()
 gtfs_processor.filter_gtfs_data()
 gtfs_processor.convert_gtfs_stops_to_osm()
 gtfs_processor.get_existing_osm_data()
-gtfs_processor.write_route_ids_csv()
+#gtfs_processor.write_route_ids_csv()
 gtfs_processor.conflate_stops()
 gtfs_processor.create_relations()
 gtfs_processor.conflate_relations()
@@ -955,4 +958,4 @@ gtfs_processor.write_to_xml(['route_masters', 'stops', 'routes'])
 
 time2 = time.time()
 duration = time2 - time1
-logger.info('Processing completed in {:.2f} seconds'.format(duration))
+logger.info(f'Processing completed in {duration:.2f} seconds')

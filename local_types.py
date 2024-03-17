@@ -48,7 +48,7 @@ class RouteRelationMembersPropsNode(TypedDict):
     role: str
     ref: str
 class RouteRelationMembersPropsRelation(TypedDict):
-    id: int
+    ref: int
     type: Literal["relation"]
     role: Literal[""]
 class RouteRelationMembers(TypedDict):
