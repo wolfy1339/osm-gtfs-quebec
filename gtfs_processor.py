@@ -72,9 +72,8 @@ service_route_tmpl = """
 """
 
 master_route_tmpl = """
-    area({})->.searchArea;
     (
-    relation["type"="route_master"]["route_master"="bus"](area.searchArea);
+    relation["type"="route_master"]["route_master"="bus"]["operator"="Réseau de transport de la Capitale"];
     );
     out body;
 """
@@ -85,7 +84,7 @@ area({})->.searchArea;
     node["highway"="bus_stop"](area.searchArea);
     relation["type"="route"]["route"="bus"]["network"="RTC"](area.searchArea);
     relation["type"="route"]["route"="bus"]["network"="Réseau de transport de la Capitale"](area.searchArea);
-    relation["type"="master_route"]["route_master"="bus"](area.searchArea);
+    relation["type"="master_route"]["route_master"="bus"]["operator"="Réseau de transport de la Capitale"];
     );
     out body;
 """
