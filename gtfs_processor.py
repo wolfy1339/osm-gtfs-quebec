@@ -639,47 +639,48 @@ class GTFSProcessor():
 
     def conflate_relations(self):
         logger.info('Resolving route relation conflicts')
-        for existing_route in self.existing_data['routes']:
-            existing_ref = existing_route['tags']['ref']
-            try:
-                existing_name = existing_route['tags']['name']
-            except KeyError:
-                existing_name = None
 
-            for route_relation in self.route_relations:
-                new_ref = route_relation['tags']['ref']
-                new_name = route_relation['tags']['name']
-                new_id = route_relation["props"]["id"]
+        # Create a defaultdict to store existing route refs and their corresponding routes
+        existing_routes_by_ref = defaultdict[str, list[RouteRelation]](list)
+        for route in self.existing_data['routes']:
+            ref = route['tags']['ref']
+            existing_routes_by_ref[ref].append(route)
 
-                by_ref = [i for i in self.existing_data['routes'] if i['tags']['ref'] == new_ref]
-                by_id = [i for i in self.route_relations if i['props']['id'] == new_id]
-                if new_ref == existing_ref and (new_name == existing_name or existing_name is None or
-                                                (len(by_ref) == 1 and len(by_id) == 0)):
-                    if existing_name is None:
-                        existing_route['tags']['name'] = new_name
-                    logger.info('... Found existing route. Resolving.')
-                    # Set id to existing id
-                    # add action=modify to props
-                    # Replace the tags with new tags
-                    # Replace node relation list with new ones
-                    # Loop through master and replace ref values with existing id
-                    # Append way members if any
+        # Process route relations
+        for route_relation in self.route_relations:
+            new_ref = route_relation['tags']['ref']
+            new_name = route_relation['tags']['name']
+            new_id = route_relation["props"]["id"]
 
-                    existing_id = existing_route["props"]["id"]
+            existing_routes = existing_routes_by_ref.get(new_ref, [])
 
-                    route_relation["props"]["id"] = existing_id # type: ignore
-                    route_relation["props"]["action"] = "modify"
+            # Find a matching existing route
+            existing_route = next((r for r in existing_routes if r['tags'].get('name') == new_name), None)
+            if existing_route:
+                logger.info('... Found existing route. Resolving.')
+                # Update properties and members of the existing route with the new route's data
+                route_relation["props"]["id"] = existing_route["props"]["id"]
+                route_relation["props"]["action"] = "modify"
+                route_relation['tags']['name'] = existing_route['tags'].get('name') or new_name
+                
+                if 'ways' in existing_route['members']:
+                    route_relation['members']['ways'] = existing_route['members']['ways']
 
-                    if 'ways' in existing_route['members']:
-                        route_relation['members']['ways'] = existing_route['members']['ways'] # type: ignore
+                # Update member relation ID for current route relation in route master
+                master_relation = next((r for r in self.route_master_relations if r['tags']['ref'] == new_ref), None)
+                if master_relation:
+                    for member in master_relation['members']:
+                        if member['props']['ref'] == new_id:
+                            member['props']['ref'] = existing_route["props"]["id"] # type: ignore
+                            break
 
-                    for route_master_relation in self.route_master_relations:
-                        if route_master_relation['tags']['ref'] == new_ref:
-                            for member in route_master_relation['members']:
-                                if member['props']['ref'] == new_id:
-                                    member['props']['ref'] = existing_id # type: ignore
-                                    break
-                    break
+        # Conflate route master relations
+        for route_master in self.route_master_relations:
+            ref = route_master['tags']['ref']
+            existing_master = next((master for master in self.existing_data['route_masters'] if master['tags']['ref'] == ref), None)
+            if existing_master:
+                # Assuming there is only one existing route for simplicity
+                route_master['props']['id'] = existing_master['props']['id']
 
     def write_to_xml(self, types: list[str]):
         #print(types)

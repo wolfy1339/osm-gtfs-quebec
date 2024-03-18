@@ -87,11 +87,6 @@ class ExistingStops(TypedDict):
     props: dict[str, str]
     geom: Geometry
 
-class ExistingRouteRelation(TypedDict):
-    props: dict[str, str | Decimal | float]
-    tags: dict[str, str]
-    members: list[RouteRelationMembers]
-
 class ExistingRouteMasterRelation(TypedDict):
     props: dict[Literal["id"], int]
     tags: dict[str, str]
@@ -99,5 +94,5 @@ class ExistingRouteMasterRelation(TypedDict):
 
 class ExistingData(TypedDict):
     stops: list[ExistingStops]
-    routes: list[ExistingRouteRelation]
-    route_master_relations: list[ExistingRouteMasterRelation]
+    routes: list[RouteRelation]
+    route_masters: list[ExistingRouteMasterRelation]
