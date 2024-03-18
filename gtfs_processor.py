@@ -1,22 +1,25 @@
-from io import TextIOWrapper
-import os, sys, shutil
-import re
 import csv
-from typing import Any, Literal, Optional, overload
-from osgeo import ogr, osr
 import logging
-from tqdm import tqdm
-from collections import defaultdict
-from operator import itemgetter
+import os
+import re
+import shutil
+import sys
 import time
+import xml.etree.ElementTree as ET
+from collections import defaultdict
+from io import TextIOWrapper
+from operator import itemgetter
+from typing import Any, Literal, Optional, overload
 
 import overpy
+from osgeo import ogr, osr
 from overpy import RelationMember
+from tqdm import tqdm
 
-import xml.etree.ElementTree as ET
-import xml.dom.minidom as mn
-
-from local_types import ExistingData, ExistingRouteMasterRelation, ExistingStops, GTFSData, GTFSStop, RouteMasterRelation, RouteRelationMembers, RouteMemberRelation, RouteRelation, RouteStopsData
+from local_types import (ExistingData, ExistingRouteMasterRelation,
+                         ExistingStops, GTFSData, GTFSStop,
+                         RouteMasterRelation, RouteMemberRelation,
+                         RouteRelation, RouteRelationMembers, RouteStopsData)
 
 ogr.UseExceptions()
 osr.UseExceptions()
@@ -119,7 +122,7 @@ class GTFSProcessor():
             self.gtfs_data[table_name] = {
                 "path": path,
             }
-            
+
             def process_csv(csvfile: TextIOWrapper):
                 reader = csv.reader(csvfile)
 
@@ -129,7 +132,7 @@ class GTFSProcessor():
                 dict_reader = csv.DictReader(csvfile, fieldnames=field_names)
                 data = [{k.strip(): v.strip() for k, v in row.items()} for row in dict_reader]
                 self.gtfs_data[table_name]["data"] = data
-            
+
             try:
                 with open(path, encoding='utf-8') as csvfile:
                     process_csv(csvfile)
@@ -146,7 +149,7 @@ class GTFSProcessor():
             path = os.path.join(boundaries_dir, boundary_file)
             city = boundary_file[:-4]
 
-            with open(path) as f:
+            with open(path, encoding="utf-8") as f:
                 self.boundaries[city] = ogr.CreateGeometryFromWkt(f.read())
 
     def get_latest_service_id(self):
@@ -161,7 +164,7 @@ class GTFSProcessor():
         for service in self.gtfs_data['calendar_dates']['data']:
             if service['date'] == max_date:
                 self.service_prefix = service['service_id']
-                logger.info(f'Latest service is {self.service_prefix}')
+                logger.info('Latest service is %s', self.service_prefix)
                 break
 
     def filter_gtfs_data(self):
@@ -216,7 +219,7 @@ class GTFSProcessor():
                 },
                 "geom": point,
             }
-            if ("Quai" in stop['stop_desc']):
+            if "Quai" in stop['stop_desc']:
                 gtfs_stop['tags']['local_ref'] = stop['stop_desc'].split("Quai")[1].strip()
 
             self.gtfs_stops.append(gtfs_stop)
@@ -333,18 +336,18 @@ class GTFSProcessor():
 
                 existing_route_masters.append(existing_master_route)
 
-        logger.info(f'Found {len(existing_stops)} existing stops in Quebec')
-        logger.info(f'Found {len(existing_routes)} existing routes in Quebec')
-        logger.info(f'Found {len(existing_route_masters)} existing master routes in Quebec')
+        logger.info('Found %s existing stops in Quebec', len(existing_stops))
+        logger.info('Found %s existing routes in Quebec', len(existing_routes))
+        logger.info('Found %d existing master routes in Quebec', len(existing_route_masters))
 
         # Write existing stops to geojson
         logger.info('Writing existing stops to GeoJSON for visualization')
         out_path = os.path.join(output_dir, 'existing_stops.geojson')
         GTFSProcessor.write_data_to_geojson(existing_stops, out_path, "geom", ["props", "tags"])
 
-        logger.info(f'... {len(existing_stops)} existings OSM stops found')
-        logger.info(f'... {len(existing_routes)} existings OSM routes found')
-        logger.info(f'... {len(existing_route_masters)} existings OSM route masters found')
+        logger.info('... %s existings OSM stops found', len(existing_stops))
+        logger.info('... %s existings OSM routes found', len(existing_routes))
+        logger.info('... %s existings OSM route masters found', len(existing_route_masters))
 
         self.existing_data.update({
             "stops": existing_stops,
@@ -374,7 +377,7 @@ class GTFSProcessor():
         os.makedirs(existing_dir)
         out_path = os.path.join(existing_dir, 'existing_routes.csv')
 
-        with open(out_path, 'w') as f:
+        with open(out_path, 'w', encoding="utf-8") as f:
             writer = csv.writer(f)
             writer.writerow(['osm_id', 'route', 'ref'])
 
@@ -405,8 +408,8 @@ class GTFSProcessor():
         coverage_osm = GTFSProcessor.reproject_geometry(coverage_utm_osm_dissolved, 32618, 4326)
 
         logger.info('Writing proximity coverage to GeoJSON')
-        coverage_path_gtfs = os.path.join(self.output_dir, '{}m_coverage_gtfs.geojson'.format(buffer_gtfs))
-        coverage_path_osm = os.path.join(self.output_dir, '{}m_coverage_osm.geojson'.format(buffer_osm))
+        coverage_path_gtfs = os.path.join(self.output_dir, f'{buffer_gtfs}m_coverage_gtfs.geojson')
+        coverage_path_osm = os.path.join(self.output_dir, f'{buffer_osm}m_coverage_osm.geojson')
         GTFSProcessor.write_geometry_to_geojson(coverage_gtfs, coverage_path_gtfs)
         GTFSProcessor.write_geometry_to_geojson(coverage_osm, coverage_path_osm)
 
@@ -460,8 +463,8 @@ class GTFSProcessor():
             else:
                 self.final_stops.append(potential_stop)
 
-        logger.info('GTFS stops count before merging: {}'.format(len(self.gtfs_stops)))
-        logger.info('GTFS stops count after merging: {}'.format(len(self.final_stops)))
+        logger.info('GTFS stops count before merging: %s',len(self.gtfs_stops))
+        logger.info('GTFS stops count after merging: %s', len(self.final_stops))
 
         logger.info('Writing final stops to file')
         final_stops_path = os.path.join(self.output_dir, 'final_stops.geojson')
@@ -529,7 +532,7 @@ class GTFSProcessor():
             route_masters[gtfs_route['route_short_name']].append(gtfs_route)
 
         for key, route_master in tqdm(route_masters.items()):
-            logger.info(f'Creating route relations for {key}')
+            logger.info('Creating route relations for %s', key)
             member_routes: list[RouteMemberRelation] = []
 
             for route in route_master:
@@ -540,7 +543,7 @@ class GTFSProcessor():
 
                 # member_ways = []
 
-                logger.info(f'... Finding longest trip and stops for {route_ref}')
+                logger.info('... Finding longest trip and stops for %s', route_ref)
                 trips = self.get_route_stops(route['route_id'])
 
                 for trip in trips:
@@ -607,11 +610,11 @@ class GTFSProcessor():
                     member_routes.append(member_route)
 
             # Create route master relation
-            logger.info(f'Creating route master relation for {key}')
+            logger.info('Creating route master relation for %s', key)
 
             # Only create route_master_relation if there are more than 1 directions
             if len(member_routes) < 1:
-                logger.info(f'... {key} is probably a loop route. Skipping.')
+                logger.info('... %s is probably a loop route. Skipping.', key)
                 continue
 
             osm_id_route_master -= 1
@@ -684,7 +687,7 @@ class GTFSProcessor():
 
     def write_to_xml(self, types: list[str]):
         #print(types)
-        logger.info('Writing JOSM XML files for {}.'.format(', '.join(types)))
+        logger.info('Writing JOSM XML files for %s.', ', '.join(types))
         output_file = os.path.join(self.output_dir, 'gtfs_quebec.xml')
 
         if os.path.exists(output_file):
@@ -786,7 +789,7 @@ class GTFSProcessor():
                 trips[trip_id]['stop_count'] = len(stops)
                 trips[trip_id]['direction_id'] = trip['direction_id']
 
-        logger.info('... ... Found {} trips for route id {}'.format(len(trips.keys()), route_id))
+        logger.info('... ... Found %s trips for route id %s', len(trips.keys()), route_id)
 
         # # Find the longest trip and sort the stops
         longest_trips = [
@@ -795,8 +798,8 @@ class GTFSProcessor():
         ]
         longest_trip_ids = ", ".join([trip_id for trip_id in longest_trips])
         stop_counts = ",".join([str(trips[trip_id]['stop_count']) for trip_id in longest_trips])
- 
-        logger.info('... ... ... the longest trips are {} with {} stops'.format(longest_trip_ids, stop_counts))
+
+        logger.info('... ... ... the longest trips are %s with %s stops', longest_trip_ids, stop_counts)
 
         # Map to final stop ids
         final_data: list[RouteStopsData] = []
@@ -958,4 +961,4 @@ gtfs_processor.write_to_xml(['route_masters', 'stops', 'routes'])
 
 time2 = time.time()
 duration = time2 - time1
-logger.info(f'Processing completed in {duration:.2f} seconds')
+logger.info('Processing completed in %.2f seconds', duration)
