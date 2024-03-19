@@ -168,7 +168,7 @@ class GTFSProcessor():
         for service in self.gtfs_data['calendar_dates']['data']:
             dates.add(service['date'])
 
-        max_date = max(list(dates))
+        max_date = max(dates)
 
         for service in self.gtfs_data['calendar_dates']['data']:
             if service['date'] == max_date:
@@ -181,11 +181,11 @@ class GTFSProcessor():
         prefix = self.service_prefix
 
         filtered_trips = [x for x in self.gtfs_data['trips']['data'] if x['service_id'] == prefix]
-        routes = set([x['route_id'] for x in filtered_trips])
-        trips = set([x['trip_id'] for x in filtered_trips])
+        routes = set(x['route_id'] for x in filtered_trips)
+        trips = set(x['trip_id'] for x in filtered_trips)
         filtered_routes = [x for x in self.gtfs_data['routes']['data'] if x['route_id'] in routes]
         filtered_stop_times = [x for x in self.gtfs_data['stop_times']['data'] if x['trip_id'] in trips]
-        stops = set([x['stop_id'] for x in filtered_stop_times])
+        stops = set(x['stop_id'] for x in filtered_stop_times)
         filtered_stops = [x for x in self.gtfs_data['stops']['data'] if x['stop_id'] in stops]
 
         self.gtfs_data['stops']['data'] = filtered_stops
@@ -434,9 +434,9 @@ class GTFSProcessor():
                     intersections.append(gtfs_stop)
 
             if len(intersections) > 0:
-                codes = list(set([intersection['tags']['ref'] for intersection in intersections]))
+                codes = set(intersection['tags']['ref'] for intersection in intersections)
                 codes_joined = ";".join(codes)
-                ids = list(set([intersection['gtfs_props']['gtfs:stop_id'] for intersection in intersections]))
+                ids = set(intersection['gtfs_props']['gtfs:stop_id'] for intersection in intersections)
 
                 potential_stop: GTFSStop = intersections[0].copy()
                 potential_stop['tags']['ref'] = codes_joined
