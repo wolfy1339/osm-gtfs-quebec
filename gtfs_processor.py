@@ -1,3 +1,4 @@
+# pylint: disable=invalid-name,missing-module-docstring,missing-function-docstring,missing-class-docstring
 import csv
 import logging
 import os
@@ -100,6 +101,15 @@ class GTFSProcessor():
         self.output_dir = output_dir
         self.gtfs_dir = os.path.join(os.path.dirname(self.gtfs_zipfile), 'gtfs')
 
+        # Initialize variables
+        self.route_master_relations: list[RouteMasterRelation] = []
+        self.route_relations: list[RouteRelation] = []
+        self.extent: tuple[float, float, float, float] = (0.1, 0.1, 0.1, 0.1)
+        self.final_stops = []
+        self.existing_data: ExistingData = {} # type: ignore
+        self.gtfs_stops: list[GTFSStop] = []
+        self.service_prefix: Optional[str] = None
+
         # Create output directory
         logger.info('Creating output directory')
         if os.path.exists(self.output_dir):
@@ -153,7 +163,6 @@ class GTFSProcessor():
                 self.boundaries[city] = ogr.CreateGeometryFromWkt(f.read())
 
     def get_latest_service_id(self):
-        self.service_prefix = None
         logger.info('Determining latest service from calendar file')
         dates = set()
         for service in self.gtfs_data['calendar_dates']['data']:
@@ -186,7 +195,6 @@ class GTFSProcessor():
 
     def convert_gtfs_stops_to_osm(self):
         osm_id = -100000
-        self.gtfs_stops: list[GTFSStop] = []
 
         logger.info('Converting GTFS stops to OSM format')
 
@@ -229,8 +237,6 @@ class GTFSProcessor():
         GTFSProcessor.write_data_to_geojson(self.gtfs_stops, out_path, "geom", ["props", "tags", "gtfs_props"])
 
     def get_existing_osm_data(self):
-        self.existing_data: ExistingData = {} # type: ignore
-
         existing_stops: list[ExistingStops] = []
         existing_routes: list[RouteRelation] = []
         existing_route_masters: list[ExistingRouteMasterRelation] = []
@@ -385,8 +391,6 @@ class GTFSProcessor():
                 writer.writerow(row)
 
     def conflate_stops(self):
-        self.final_stops = []
-
         logger.info('Calculating coverages for merging')
         buffer_gtfs = 3  # meter
         buffer_osm = 3  # meter
@@ -517,8 +521,6 @@ class GTFSProcessor():
         '''
 
         route_masters = defaultdict[str, list[dict[str, str]]](list)
-        self.route_master_relations: list[RouteMasterRelation] = []
-        self.route_relations: list[RouteRelation] = []
 
         # Create directory for shapes
         shapes_dir = os.path.join(self.output_dir, 'shapes')
