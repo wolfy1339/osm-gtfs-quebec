@@ -116,22 +116,22 @@ class GTFSProcessor():
 
         filenames = os.listdir(self.gtfs_dir)
 
+        def process_csv(csvfile: TextIOWrapper):
+            reader = csv.reader(csvfile)
+
+            field_names = next(reader)
+            self.gtfs_data[table_name]["field_names"] = field_names
+
+            dict_reader = csv.DictReader(csvfile, fieldnames=field_names)
+            data = [{k.strip(): v.strip() for k, v in row.items()} for row in dict_reader]
+            self.gtfs_data[table_name]["data"] = data
+
         for filename in tqdm(filenames):
             table_name = filename[:-4]
             path = os.path.join(self.gtfs_dir, filename)
             self.gtfs_data[table_name] = {
                 "path": path,
             }
-
-            def process_csv(csvfile: TextIOWrapper):
-                reader = csv.reader(csvfile)
-
-                field_names = next(reader)
-                self.gtfs_data[table_name]["field_names"] = field_names
-
-                dict_reader = csv.DictReader(csvfile, fieldnames=field_names)
-                data = [{k.strip(): v.strip() for k, v in row.items()} for row in dict_reader]
-                self.gtfs_data[table_name]["data"] = data
 
             try:
                 with open(path, encoding='utf-8') as csvfile:
