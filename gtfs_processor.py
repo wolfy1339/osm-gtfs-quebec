@@ -164,7 +164,7 @@ class GTFSProcessor():
 
     def get_latest_service_id(self):
         logger.info('Determining latest service from calendar file')
-        dates = set()
+        dates = set[str]()
         for service in self.gtfs_data['calendar_dates']['data']:
             dates.add(service['date'])
 
@@ -223,7 +223,7 @@ class GTFSProcessor():
                     'wheelchair': 'yes' if stop['wheelchair_boarding'] == '1' else 'no',
                 },
                 "gtfs_props": {
-                    'gtfs:stop_id': stop['stop_id'],
+                    'gtfs:stop_id': stop['stop_id']
                 },
                 "geom": point,
             }
@@ -418,8 +418,8 @@ class GTFSProcessor():
         GTFSProcessor.write_geometry_to_geojson(coverage_osm, coverage_path_osm)
 
         logger.info('Filtering coverages for Quebec')
-        coverage_osm_quebec = []
-        for osm_buffer in coverage_osm:
+        coverage_osm_quebec: list[ogr.Geometry] = []
+        for osm_buffer in iter(coverage_osm):
             if osm_buffer.Intersects(self.boundaries['Quebec']):
                 coverage_osm_quebec.append(osm_buffer)
 
@@ -428,7 +428,7 @@ class GTFSProcessor():
 
             potential_stop = None # type: ignore
 
-            intersections = []
+            intersections: list[GTFSStop] = []
             for gtfs_stop in self.gtfs_stops:
                 if gtfs_stop['geom'].Intersects(gtfs_buffer):
                     intersections.append(gtfs_stop)
@@ -591,7 +591,8 @@ class GTFSProcessor():
                             "from": first_stop_name,
                             "to": last_stop_name,
                             "colour": route_color,
-                            "public_transport:version": "2"
+                            "public_transport:version": "2",
+                            "gtfs:trip_id": trip_id,
                         },
                         "members": {
                             "nodes": member_nodes
@@ -633,7 +634,8 @@ class GTFSProcessor():
                     "operator": "Réseau de transport de la Capitale",
                     "type": "route_master",
                     "route_master": "bus",
-                    "public_transport:version": 2
+                    "public_transport:version": 2,
+                    "gtfs:route_id": f"1-{key}"
                 },
                 "members": member_routes
             }
@@ -667,7 +669,7 @@ class GTFSProcessor():
                 route_relation["props"]["id"] = existing_route["props"]["id"]
                 route_relation["props"]["action"] = "modify"
                 route_relation['tags']['name'] = existing_route['tags'].get('name') or new_name
-                
+
                 if 'ways' in existing_route['members']:
                     route_relation['members']['ways'] = existing_route['members']['ways']
 
@@ -810,8 +812,20 @@ class GTFSProcessor():
             trip_stops: list[dict[str,str]] = trips[trip]['stops']
             stops_sorted = sorted(trip_stops, key=itemgetter('stop_sequence'))
             stops = []
-            first_stop_name = next((final_stop['tags']['name'] for stop in stops_sorted for final_stop in self.final_stops if 'gtfs:stop_id' in final_stop['gtfs_props'] and stop['stop_id'] in final_stop['gtfs_props']['gtfs:stop_id']), "")
-            last_stop_name = next((final_stop['tags']['name'] for stop in reversed(stops_sorted) for final_stop in self.final_stops if 'gtfs:stop_id' in final_stop['gtfs_props'] and stop['stop_id'] in final_stop['gtfs_props']['gtfs:stop_id']), "")
+            first_stop_name = next((
+                final_stop['tags']['name']
+                for stop in stops_sorted
+                for final_stop in self.final_stops
+                if 'gtfs:stop_id' in final_stop['gtfs_props']
+                and stop['stop_id'] in final_stop['gtfs_props']['gtfs:stop_id']
+            ), "")
+            last_stop_name = next((
+                final_stop['tags']['name']
+                for stop in reversed(stops_sorted)
+                for final_stop in self.final_stops
+                if 'gtfs:stop_id' in final_stop['gtfs_props']
+                and stop['stop_id'] in final_stop['gtfs_props']['gtfs:stop_id']
+            ), "")
 
             for stop in stops_sorted:
                 for final_stop in [i for i in self.final_stops if 'gtfs:stop_id' in i['gtfs_props']]:

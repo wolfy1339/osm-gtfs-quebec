@@ -1,4 +1,4 @@
-from decimal import Decimal
+# pylint: disable=missing-module-docstring, missing-class-docstring
 from typing import Literal, NotRequired, TypedDict, TypeVar
 from osgeo.ogr import Geometry
 
@@ -39,7 +39,6 @@ class GTFSStop(TypedDict):
     geom: Geometry
 
 class RouteRelationMembersPropsWay(TypedDict):
-    id: int
     type: Literal["way"]
     role: str
     ref: str
@@ -69,7 +68,8 @@ RouteMasterRelationTags = TypedDict('RouteMasterRelationTags', {
     "type": Literal["route_master"],
     "route_master": Literal["bus"],
     "public_transport:version": Literal[2],
-    "school": NotRequired[Literal["yes"]]
+    "school": NotRequired[Literal["yes"]],
+    "gtfs:route_id": str
 })
 class RouteMasterRelation(TypedDict):
     props: dict[Literal["id"], int]
