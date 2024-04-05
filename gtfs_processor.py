@@ -1,4 +1,4 @@
-# pylint: disable=invalid-name,missing-module-docstring,missing-function-docstring,missing-class-docstring
+# pylint: disable=invalid-name,missing-module-docstring,missing-function-docstring,missing-class-docstring,too-many-instance-attributes
 import csv
 import logging
 import os
@@ -10,7 +10,7 @@ import xml.etree.ElementTree as ET
 from collections import defaultdict
 from io import TextIOWrapper
 from operator import itemgetter
-from typing import Any, Literal, Optional, overload
+from typing import Any, Literal, Mapping, Optional, TypeVar, overload
 
 import overpy
 from osgeo import ogr, osr
@@ -18,9 +18,8 @@ from overpy import RelationMember
 from tqdm import tqdm
 
 from local_types import (ExistingData, ExistingRouteMasterRelation,
-                         ExistingStops, GTFSData, GTFSStop,
-                         RouteMasterRelation, RouteMemberRelation,
-                         RouteRelation, RouteRelationMembers, RouteStopsData)
+                         ExistingStops, GTFSData, GTFSStop, RelationMemberNodes, RouteMasterRelation, RouteMemberRelation,
+                         RouteRelation, RouteStopsData, StopsData, TripsData)
 
 ogr.UseExceptions()
 osr.UseExceptions()
@@ -105,7 +104,7 @@ class GTFSProcessor():
         self.route_master_relations: list[RouteMasterRelation] = []
         self.route_relations: list[RouteRelation] = []
         self.extent: tuple[float, float, float, float] = (0.1, 0.1, 0.1, 0.1)
-        self.final_stops = []
+        self.final_stops : list[GTFSStop] = []
         self.existing_data: ExistingData = {} # type: ignore
         self.gtfs_stops: list[GTFSStop] = []
         self.service_prefix: Optional[str] = None
@@ -133,8 +132,7 @@ class GTFSProcessor():
             self.gtfs_data[table_name]["field_names"] = field_names
 
             dict_reader = csv.DictReader(csvfile, fieldnames=field_names)
-            data = [{k.strip(): v.strip() for k, v in row.items()} for row in dict_reader]
-            self.gtfs_data[table_name]["data"] = data
+            self.gtfs_data[table_name]["data"] = [{k.strip(): v.strip() for k, v in row.items()} for row in dict_reader]
 
         for filename in tqdm(filenames):
             table_name = filename[:-4]
@@ -221,6 +219,7 @@ class GTFSProcessor():
                     'network': 'RTC',
                     'operator': 'Réseau de transport de la Capitale',
                     'wheelchair': 'yes' if stop['wheelchair_boarding'] == '1' else 'no',
+                    'gtfs:stop_id': stop['stop_id']
                 },
                 "gtfs_props": {
                     'gtfs:stop_id': stop['stop_id']
@@ -418,20 +417,14 @@ class GTFSProcessor():
         GTFSProcessor.write_geometry_to_geojson(coverage_osm, coverage_path_osm)
 
         logger.info('Filtering coverages for Quebec')
-        coverage_osm_quebec: list[ogr.Geometry] = []
-        for osm_buffer in iter(coverage_osm):
-            if osm_buffer.Intersects(self.boundaries['Quebec']):
-                coverage_osm_quebec.append(osm_buffer)
+        coverage_osm_quebec: list[ogr.Geometry] = [osm_buffer for osm_buffer in iter(coverage_osm) if osm_buffer.Intersects(self.boundaries['Quebec'])]
 
         logger.info('Merging stops by proximity')
         for gtfs_buffer in tqdm(coverage_gtfs):
 
             potential_stop = None # type: ignore
 
-            intersections: list[GTFSStop] = []
-            for gtfs_stop in self.gtfs_stops:
-                if gtfs_stop['geom'].Intersects(gtfs_buffer):
-                    intersections.append(gtfs_stop)
+            intersections: list[GTFSStop] = [gtfs_stop for gtfs_stop in self.gtfs_stops if gtfs_stop['geom'].Intersects(gtfs_buffer)]
 
             if len(intersections) > 0:
                 codes = set(intersection['tags']['ref'] for intersection in intersections)
@@ -550,7 +543,7 @@ class GTFSProcessor():
 
                 for trip in trips:
                     osm_id_route -= 1
-                    member_nodes: list[RouteRelationMembers] = []
+                    member_nodes: list[RelationMemberNodes] = []
                     first_stop_name = trip['first_stop_name']
                     last_stop_name = trip['last_stop_name']
                     stops_data = trip['stops']
@@ -567,10 +560,10 @@ class GTFSProcessor():
                     GTFSProcessor.write_data_to_geojson([trip_shape], trip_filename, 'geom', ['fields'])
 
                     for stop in stops_data:
-                        member_node: RouteRelationMembers = {
+                        member_node: RelationMemberNodes = {
                             "props": {
                                 "type": 'node',
-                                "ref": stop[0],
+                                "ref": str(stop[0]),
                                 "role": 'platform' if (stop[1] == '0' and stop[2] == '0') else 'platform_exit_only' if stop[1] == '2' else 'platform_entry_only'
                             }
                         }
@@ -593,6 +586,7 @@ class GTFSProcessor():
                             "colour": route_color,
                             "public_transport:version": "2",
                             "gtfs:trip_id": trip_id,
+                            "gtfs:route_id": route_ref,
                         },
                         "members": {
                             "nodes": member_nodes
@@ -606,7 +600,7 @@ class GTFSProcessor():
                     member_route: RouteMemberRelation = {
                         "props": {
                             "type": "relation",
-                            "ref": osm_id_route,
+                            "ref": str(osm_id_route),
                             "role": ""
                         }
                     }
@@ -734,15 +728,13 @@ class GTFSProcessor():
                 for k, v in route_relation['props'].items():
                     relation.set(k, str(v))
 
-                member_types = route_relation['members'].keys()
-
                 for member_node in route_relation['members']['nodes']:
                     mem = ET.SubElement(relation, 'member')
 
                     for k, v in member_node['props'].items():
                         mem.set(k, str(v))
 
-                if 'ways' in member_types:
+                if 'ways' in route_relation['members']:
                     for member_way in route_relation['members']['ways']:
                         mem = ET.SubElement(relation, 'member')
 
@@ -776,21 +768,21 @@ class GTFSProcessor():
         tree.write(output_file, encoding='unicode')
 
     def get_route_stops(self, route_id: str):
-        trips = defaultdict(dict)
+        trips = defaultdict[str, TripsData](dict) # type: ignore
 
         for trip in self.gtfs_data['trips']['data']:
             if trip['route_id'] == route_id:
                 trip_id = trip['trip_id']
 
-                stops = [{
+                trip_stops: list[StopsData] = [{
                     "stop_id": stop_time["stop_id"],
                     "stop_sequence": int(stop_time["stop_sequence"]),
                     "pickup_type": stop_time["pickup_type"],
                     "drop_off_type": stop_time["drop_off_type"],
-                } for stop_time in self.gtfs_data['stop_times']['data'] if stop_time['trip_id'] == trip_id]
+                } for stop_time in self.gtfs_data['stop_times']['data'] if stop_time['trip_id'] == trip_id] # type: ignore
 
-                trips[trip_id]['stops'] = stops
-                trips[trip_id]['stop_count'] = len(stops)
+                trips[trip_id]['stops'] = trip_stops
+                trips[trip_id]['stop_count'] = len(trip_stops)
                 trips[trip_id]['direction_id'] = trip['direction_id']
 
         logger.info('... ... Found %s trips for route id %s', len(trips.keys()), route_id)
@@ -800,7 +792,7 @@ class GTFSProcessor():
             max(trips, key=lambda v: trips[v]['stop_count'] and trips[v]['direction_id'] == '0'),
             max(trips, key=lambda v: trips[v]['stop_count'] and trips[v]['direction_id'] == '1')
         ]
-        longest_trip_ids = ", ".join([trip_id for trip_id in longest_trips])
+        longest_trip_ids = ", ".join(longest_trips)
         stop_counts = ",".join([str(trips[trip_id]['stop_count']) for trip_id in longest_trips])
 
         logger.info('... ... ... the longest trips are %s with %s stops', longest_trip_ids, stop_counts)
@@ -809,7 +801,7 @@ class GTFSProcessor():
         final_data: list[RouteStopsData] = []
 
         for trip in longest_trips:
-            trip_stops: list[dict[str,str]] = trips[trip]['stops']
+            trip_stops = trips[trip]['stops']
             stops_sorted = sorted(trip_stops, key=itemgetter('stop_sequence'))
             stops = []
             first_stop_name = next((
@@ -817,19 +809,19 @@ class GTFSProcessor():
                 for stop in stops_sorted
                 for final_stop in self.final_stops
                 if 'gtfs:stop_id' in final_stop['gtfs_props']
-                and stop['stop_id'] in final_stop['gtfs_props']['gtfs:stop_id']
+                and stop['stop_id'] == final_stop['gtfs_props']['gtfs:stop_id']
             ), "")
             last_stop_name = next((
                 final_stop['tags']['name']
                 for stop in reversed(stops_sorted)
                 for final_stop in self.final_stops
                 if 'gtfs:stop_id' in final_stop['gtfs_props']
-                and stop['stop_id'] in final_stop['gtfs_props']['gtfs:stop_id']
+                and stop['stop_id'] == final_stop['gtfs_props']['gtfs:stop_id']
             ), "")
 
             for stop in stops_sorted:
                 for final_stop in [i for i in self.final_stops if 'gtfs:stop_id' in i['gtfs_props']]:
-                    if stop['stop_id'] in final_stop['gtfs_props']['gtfs:stop_id']:
+                    if stop['stop_id'] == final_stop['gtfs_props']['gtfs:stop_id']:
                         stops.append((final_stop['props']['id'], stop['pickup_type'], stop['drop_off_type']))
 
             final_data.append({
@@ -868,8 +860,9 @@ class GTFSProcessor():
 
         return {"geom": line}
 
+    _T = TypeVar('_T', bound=Mapping[str, Any])
     @staticmethod
-    def write_data_to_geojson(data: list[Any], out_path: str, geom_field: str, field_keys: Optional[list[str]] = None, epsg_id:Optional[int]=None):
+    def write_data_to_geojson(data: list[_T], out_path: str, geom_field: str, field_keys: Optional[list[str]] = None, epsg_id:Optional[int]=None):
         # Create path
         if os.path.exists(out_path):
             os.remove(out_path)
@@ -877,7 +870,7 @@ class GTFSProcessor():
         # Get GeoJSON driver
         driver: ogr.Driver = ogr.GetDriverByName('GeoJSON')
 
-        ds = driver.CreateDataSource(out_path)
+        ds = ogr.GetDriverByName("GeoJSON").CreateDataSource(out_path)
 
         spatial_ref = osr.SpatialReference()
         if epsg_id:
@@ -955,8 +948,7 @@ class GTFSProcessor():
 
         if return_wkt:
             return geom.ExportToWkt()
-        else:
-            return geom
+        return geom
 
 cwd = os.getcwd()
 gtfs_zipfile = os.path.join(cwd, 'googletransit.zip')

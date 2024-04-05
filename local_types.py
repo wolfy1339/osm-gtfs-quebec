@@ -1,9 +1,9 @@
 # pylint: disable=missing-module-docstring, missing-class-docstring
-from typing import Literal, NotRequired, TypedDict, TypeVar
+from typing import Literal, NotRequired, TypedDict, TypeVar, Generic
 from osgeo.ogr import Geometry
 
 K = TypeVar('K')
-class GTFSDataKey[K](TypedDict):
+class GTFSDataKey(TypedDict, Generic[K]):
     field_names: list[K]
     data: list[dict[K, str]]
 
@@ -22,15 +22,16 @@ class GTFSData(TypedDict):
 GTFSStopTags = TypedDict('GTFSStopTags', {
     "name": str,
     "ref": str,
-    "network": Literal["RTC"],
-    "network:wikidata": Literal["Q3456768"],
-    "operator": Literal["Réseau de transport de la Capitale"],
+    "network": Literal["RTC"] | Literal["STLévis"],
+    "network:wikidata": Literal["Q3456768"] | Literal["Q3488027"],
+    "operator": Literal["Réseau de transport de la Capitale"] | Literal["Société de transport de Lévis"],
     "public_transport": Literal["platform"],
     "highway": Literal["bus_stop"],
     "bus": Literal["yes"],
     "description": NotRequired[str],
     "wheelchair": Literal["yes", "no"],
-    "local_ref": NotRequired[str]
+    "local_ref": NotRequired[str],
+    "gtfs:stop_id": str
 })
 class GTFSStop(TypedDict):
     props: dict[str, str | int]
@@ -38,38 +39,40 @@ class GTFSStop(TypedDict):
     gtfs_props: dict[str, str]
     geom: Geometry
 
-class RouteRelationMembersPropsWay(TypedDict):
-    type: Literal["way"]
-    role: str
+Type = TypeVar('Type', bound=Literal["way", "node", "relation"])
+Role = TypeVar('Role', bound=str)
+class RelationMembersProps(TypedDict, Generic[Type, Role]):
+    type: Type
+    role: Role
     ref: str
-class RouteRelationMembersPropsNode(TypedDict):
-    type: Literal["node"]
-    role: str
-    ref: str
-class RouteRelationMembersPropsRelation(TypedDict):
-    ref: int
-    type: Literal["relation"]
-    role: Literal[""]
+class RouteRelationMemberProps(TypedDict, Generic[Type, Role]):
+    props: RelationMembersProps[Type, Role]
+
+RelationMemberNodes = RouteRelationMemberProps[Literal["node"], str]
+RelationMemberWays = RouteRelationMemberProps[Literal["way"], str]
+RouteMemberRelation = RouteRelationMemberProps[Literal["relation"], Literal[""]]
+
 class RouteRelationMembers(TypedDict):
-    props: RouteRelationMembersPropsWay | RouteRelationMembersPropsNode | RouteRelationMembersPropsRelation
-class RouteMemberRelation(TypedDict):
-    props: RouteRelationMembersPropsRelation
+    nodes: list[RelationMemberNodes]
+    ways: NotRequired[list[RelationMemberWays]]
+
 class RouteRelation(TypedDict):
     props: dict[str, str | int]
     tags: dict[str, str]
-    members: dict[str, list[RouteRelationMembers]]
+    members: RouteRelationMembers
 
 RouteMasterRelationTags = TypedDict('RouteMasterRelationTags', {
     "name": str,
     "ref": str,
-    "network": Literal["RTC"],
-    "network:wikidata": Literal["Q3456768"],
-    "operator": Literal["Réseau de transport de la Capitale"],
+    "network": Literal["RTC"] | Literal["STLévis"],
+    "network:wikidata": Literal["Q3456768"] | Literal["Q3488027"],
+    "operator": Literal["Réseau de transport de la Capitale"] | Literal["Société de transport de Lévis"],
     "type": Literal["route_master"],
     "route_master": Literal["bus"],
     "public_transport:version": Literal[2],
     "school": NotRequired[Literal["yes"]],
-    "gtfs:route_id": str
+    "gtfs:route_id": str,
+    "colour": NotRequired[str]
 })
 class RouteMasterRelation(TypedDict):
     props: dict[Literal["id"], int]
@@ -80,7 +83,7 @@ class RouteStopsData(TypedDict):
     first_stop_name: str
     last_stop_name: str
     trip_id: str
-    stops: list[tuple[str, str, str]]
+    stops: list[tuple[str | int, str, str]]
 
 class ExistingStops(TypedDict):
     tags: dict[str, str]
@@ -96,3 +99,16 @@ class ExistingData(TypedDict):
     stops: list[ExistingStops]
     routes: list[RouteRelation]
     route_masters: list[ExistingRouteMasterRelation]
+
+class StopsData(TypedDict):
+    stop_id: str
+    stop_name: str
+    stop_sequence: int
+    pickup_type: str
+    drop_off_type: str
+
+class TripsData(TypedDict):
+    stops: list[StopsData]
+    stop_count: int
+    direction_id: str
+    trip_headsign: str
