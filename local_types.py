@@ -1,5 +1,5 @@
 # pylint: disable=missing-module-docstring, missing-class-docstring
-from typing import Literal, NotRequired, TypedDict, TypeVar, Generic
+from typing import Annotated, Literal, NotRequired, TypedDict, TypeVar, Generic, Union
 from osgeo.ogr import Geometry
 
 K = TypeVar('K')
@@ -19,7 +19,23 @@ class GTFSData(TypedDict):
     transfers: GTFSDataKey[str]
     trips: GTFSDataKey[Literal['route_id', 'service_id', 'shape_id', 'trip_id', 'trip_headsign', 'trip_short_name', 'direction_id', 'block_id','wheelchair_accessible']]
 
+ConfigStopTags = TypedDict('ConfigStopTags', {
+    "bus": Literal["yes"],
+    "highway": Literal["bus_stop"],
+    "public_transport": Literal["platform"],
+    "network:wikidata": Literal["Q3456768"] | Literal["Q3488027"],
+    "network": Literal["RTC"] | Literal["STLévis"],
+    "operator": Literal["Réseau de transport de la Capitale"] | Literal["Société de transport de Lévis"]
+})
+StopTags = TypedDict("StopTags", {
+    "description": NotRequired[str],
+    "wheelchair": Literal["yes", "no"],
+    "local_ref": NotRequired[str],
+    "gtfs:stop_id": str
+})
+
 GTFSStopTags = TypedDict('GTFSStopTags', {
+    "bus": Literal["yes"],
     "name": str,
     "ref": str,
     "network": Literal["RTC"] | Literal["STLévis"],
@@ -27,12 +43,12 @@ GTFSStopTags = TypedDict('GTFSStopTags', {
     "operator": Literal["Réseau de transport de la Capitale"] | Literal["Société de transport de Lévis"],
     "public_transport": Literal["platform"],
     "highway": Literal["bus_stop"],
-    "bus": Literal["yes"],
     "description": NotRequired[str],
     "wheelchair": Literal["yes", "no"],
     "local_ref": NotRequired[str],
     "gtfs:stop_id": str
 })
+
 class GTFSStop(TypedDict):
     props: dict[str, str | int]
     tags: GTFSStopTags

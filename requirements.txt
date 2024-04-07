@@ -1,2 +1,4 @@
 overpy
 tqdm
+gdal
+types-tqdm

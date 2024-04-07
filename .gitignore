@@ -1,6 +1,7 @@
-gtfs/
+gtfs*/
 *.zip
 .mypy_cache/
-output/
+output*/
 __pycache__/
 *.pyc
+package*.json
